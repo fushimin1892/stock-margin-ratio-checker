@@ -1,0 +1,12 @@
+{
+  "code": {
+    "updatedAt": "2026-07-31T16:11:52+09:00",
+    "commit": "41d2e4c",
+    "subject": "更新日時を記録する仕組みを追加し、start.bat を削除"
+  },
+  "data": {
+    "fetchedAt": "2026-07-31T16:54:05.913Z",
+    "latestMarginWeek": "2026/7/24",
+    "stockCount": 21
+  }
+}

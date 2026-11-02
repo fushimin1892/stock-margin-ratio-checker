@@ -1,0 +1,15 @@
+{
+  "name": "kabu-shinyo-checker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "信用残ウォッチ — 銘柄の信用買い残・売り残・信用倍率・前週比と株価レンジを表示するサイト",
+  "scripts": {
+    "start": "node server.js",
+    "update-data": "node scripts/update-data.js",
+    "build-seo": "node scripts/build-seo.js",
+    "build-version": "node scripts/build-version.js"
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}

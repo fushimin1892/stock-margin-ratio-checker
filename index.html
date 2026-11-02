@@ -1,0 +1,1801 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>信用残ウォッチ｜信用残・信用倍率をひと目で</title>
+<meta name="description" content="銘柄の信用買い残・売り残・信用倍率・前週比を、推移グラフと週次履歴でまとめて確認できます。">
+
+<!-- 静的配信 (GitHub Pages) ではレスポンスヘッダーを設定できないため、
+     指定できる範囲を meta で補う。frame-ancestors は meta では無効。 -->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  script-src 'self' 'unsafe-inline';
+  style-src 'self' 'unsafe-inline';
+  img-src 'self' data:;
+  connect-src 'self' https://kabu-shinyo-checker.vercel.app;
+  object-src 'none';
+  base-uri 'none';
+  form-action 'self'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f9f9f7" media="(prefers-color-scheme: light)">
+
+<!-- 初回検索は API へ接続するので、その分の接続確立を先に済ませておく -->
+<link rel="preconnect" href="https://kabu-shinyo-checker.vercel.app" crossorigin>
+<link rel="dns-prefetch" href="https://kabu-shinyo-checker.vercel.app">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="信用残ウォッチ">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:title" content="信用残ウォッチ｜信用残・信用倍率をひと目で">
+<meta property="og:description" content="銘柄の信用買い残・売り残・信用倍率・前週比を、推移グラフと週次履歴でまとめて確認できます。">
+<meta property="og:image" content="./og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="信用残ウォッチ — 信用買い残・売り残・信用倍率を表示するサイト">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="信用残ウォッチ｜信用残・信用倍率をひと目で">
+<meta name="twitter:description" content="銘柄の信用買い残・売り残・信用倍率・前週比を、推移グラフと週次履歴でまとめて確認できます。">
+<meta name="twitter:image" content="./og.png">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "信用残ウォッチ",
+  "alternateName": "Margin Balance Watch",
+  "description": "銘柄の信用買い残・売り残・信用倍率・前週比を、推移グラフと週次履歴でまとめて確認できるサイト。",
+  "applicationCategory": "FinanceApplication",
+  "operatingSystem": "Web",
+  "inLanguage": "ja",
+  "isAccessibleForFree": true,
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "JPY" }
+}
+</script>
+<script>
+  // テーマは描画前に確定させる (切り替え時のちらつき防止)。既定はダーク。
+  // ?theme=light|dark|auto を付ければその場で指定できる。
+  (function () {
+    var ok = { light: 1, dark: 1, auto: 1 };
+    var t = new URLSearchParams(location.search).get("theme");
+    if (!ok[t]) { try { t = localStorage.getItem("kabu-theme"); } catch (e) {} }
+    document.documentElement.setAttribute("data-theme", ok[t] ? t : "dark");
+  })();
+</script>
+<style>
+  /* ---- 配色 ----
+     系列色は data-viz の検証済みカテゴリカル配色のスロット1〜3 (青/橙/アクア)。
+     増減の赤緑は国内慣習に合わせて「増加=赤・減少=緑」。色だけに頼らないよう
+     ▲▼ の記号を必ず添える。 */
+  :root {
+    color-scheme: light;
+    --plane:      #f9f9f7;   /* ページ地 */
+    --surface:    #fcfcfb;   /* カード面 */
+    --surface-2:  #f2f1ed;   /* 一段沈めた面 */
+    --text:       #0b0b0b;
+    --text-2:     #52514e;
+    /* 本文に使うため WCAG AA (4.5:1) を満たす濃さにしている。
+       #898781 はグラフ軸ラベル用の明度で、テキストだと 3.4:1 しか出ない。 */
+    --muted:      #6b6a64;
+    --grid:       #e1e0d9;
+    --axis:       #c3c2b7;
+    --line:       rgba(11, 11, 11, .10);
+    --line-solid: #e4e3dd;
+    --accent:     #2a78d6;
+    --accent-ink: #ffffff;
+    --accent-soft:#e8f0fc;
+    --accent-badge:#1c5cab;   /* accent-soft 上の文字用 (accent だと 3.9:1) */
+    --accent-strong:#256abf;  /* 白文字を載せる面用 (accent だと 4.4:1) */
+    --up-ink:     #c22f2f;    /* up-soft 上の文字用 (up だと 4.1:1) */
+    --down-ink:   #006300;
+    --up:         #d03b3b;   /* 増加 = 赤 (国内慣習) */
+    --up-soft:    #fbeaea;
+    --down:       #006300;   /* 減少 = 緑 */
+    --down-soft:  #e6f2e6;
+    --series-buy:   #2a78d6;
+    --series-sell:  #eb6834;
+    --series-price: #1baf7a;
+    --shadow: 0 1px 2px rgba(11,11,11,.04), 0 6px 20px rgba(11,11,11,.05);
+    --card: var(--surface);   /* グラフ描画が参照 */
+  }
+  /* OS がダークで、明示的にライトを選んでいないとき */
+  @media (prefers-color-scheme: dark) {
+    :root:where([data-theme="auto"]) {
+      color-scheme: dark;
+      --plane:      #0d0d0d;
+      --surface:    #1a1a19;
+      --surface-2:  #121211;
+      --text:       #ffffff;
+      --text-2:     #c3c2b7;
+      --muted:      #898781;
+      --grid:       #2c2c2a;
+      --axis:       #383835;
+      --line:       rgba(255, 255, 255, .10);
+      --line-solid: #2c2c2a;
+      --accent:     #3987e5;
+      --accent-ink: #06111f;
+      --accent-soft:#16283f;
+      --accent-badge:#6da7ec;
+      --accent-strong:#3987e5;
+      --up-ink:     #e66767;
+      --down-ink:   #0ca30c;
+      --up:         #e66767;
+      --up-soft:    #33201f;
+      --down:       #0ca30c;
+      --down-soft:  #14290f;
+      --series-buy:   #3987e5;
+      --series-sell:  #d95926;
+      --series-price: #199e70;
+      --shadow: 0 1px 2px rgba(0,0,0,.5), 0 8px 28px rgba(0,0,0,.35);
+    }
+  }
+  /* 明示的にダークを選んだとき (OS 設定より優先) */
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --plane:      #0d0d0d;
+    --surface:    #1a1a19;
+    --surface-2:  #121211;
+    --text:       #ffffff;
+    --text-2:     #c3c2b7;
+    --muted:      #898781;
+    --grid:       #2c2c2a;
+    --axis:       #383835;
+    --line:       rgba(255, 255, 255, .10);
+    --line-solid: #2c2c2a;
+    --accent:     #3987e5;
+    --accent-ink: #06111f;
+    --accent-soft:#16283f;
+    --accent-badge:#6da7ec;
+    --accent-strong:#3987e5;
+    --up-ink:     #e66767;
+    --down-ink:   #0ca30c;
+    --up:         #e66767;
+    --up-soft:    #33201f;
+    --down:       #0ca30c;
+    --down-soft:  #14290f;
+    --series-buy:   #3987e5;
+    --series-sell:  #d95926;
+    --series-price: #199e70;
+    --shadow: 0 1px 2px rgba(0,0,0,.5), 0 8px 28px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", "Hiragino Kaku Gothic ProN",
+                 "Yu Gothic UI", "Meiryo", sans-serif;
+    background: var(--plane);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+    font-feature-settings: "palt" 1;
+  }
+  a { color: var(--accent-strong); }
+
+  /* キーボード操作時のフォーカス位置を明示する (マウス操作時は出さない) */
+  :where(a, button, input, [tabindex]):focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  /* 視覚的には隠すがスクリーンリーダーには読ませる */
+  .visually-hidden {
+    position: absolute; width: 1px; height: 1px;
+    margin: -1px; padding: 0; border: 0;
+    clip-path: inset(50%); overflow: hidden; white-space: nowrap;
+  }
+
+  /* 動きを減らす設定の環境ではアニメーションを止める */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: .01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: .01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* ---- 上部バー ---- */
+  .topbar {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 16px;
+    /* 不透明の地色を先に置く。color-mix / backdrop-filter 非対応でも
+       背景が透けて文字が読めなくなることがない (Safari 16.1 以前など)。 */
+    background: var(--plane);
+    border-bottom: 1px solid var(--line);
+  }
+  @supports (background: color-mix(in srgb, red 50%, transparent)) and
+            ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .topbar {
+      background: color-mix(in srgb, var(--plane) 88%, transparent);
+      -webkit-backdrop-filter: saturate(160%) blur(10px);
+      backdrop-filter: saturate(160%) blur(10px);
+    }
+  }
+  .brand { display: flex; align-items: baseline; gap: 9px; min-width: 0; }
+  .brand .mark { flex: none; align-self: center; display: block; }
+  .brand .bname {
+    font-size: 16px; font-weight: 700; letter-spacing: .02em; white-space: nowrap;
+  }
+  .brand .bsub {
+    font-size: 11px; color: var(--muted); letter-spacing: .08em;
+    text-transform: uppercase; white-space: nowrap;
+  }
+  @media (max-width: 560px) { .brand .bsub { display: none; } }
+
+  .themetoggle {
+    margin-left: auto; display: flex; gap: 2px; flex: none;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 999px; padding: 2px;
+  }
+  .themetoggle button {
+    appearance: none; border: none; background: transparent;
+    color: var(--muted); font: inherit; font-size: 12px; font-weight: 600;
+    padding: 4px 11px; border-radius: 999px; cursor: pointer;
+    display: flex; align-items: center; gap: 4px; line-height: 1.5;
+    white-space: nowrap;   /* 幅が足りないとき「ラ / イ / ト」と縦積みになるのを防ぐ */
+  }
+  .themetoggle button:hover { color: var(--text); }
+  .themetoggle button[aria-pressed="true"] {
+    background: var(--surface); color: var(--text);
+    box-shadow: 0 1px 2px rgba(0,0,0,.12);
+  }
+  .themetoggle svg { display: block; }
+
+  .wrap { max-width: 940px; margin: 0 auto; padding: 22px 16px 72px; }
+
+  /* ---- 導入 ---- */
+  .lede { text-align: center; margin-bottom: 18px; }
+  .lede h1 { font-size: 21px; font-weight: 700; letter-spacing: .01em; }
+  .lede p { color: var(--muted); font-size: 13px; margin-top: 3px; }
+
+  /* ---- 検索 ---- */
+  .searchbox {
+    display: flex; gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--line-solid);
+    border-radius: 12px; padding: 8px;
+    box-shadow: var(--shadow);
+  }
+  .searchbox:focus-within { border-color: var(--accent); }
+  .searchbox input {
+    flex: 1; min-width: 0;
+    border: none; outline: none; background: transparent;
+    color: var(--text); font: inherit; font-size: 16px; padding: 8px 10px;
+  }
+  .searchbox input::placeholder { color: var(--muted); }
+  .searchbox button {
+    border: none; background: var(--accent-strong); color: var(--accent-ink);
+    font: inherit; font-size: 14px; font-weight: 700;
+    padding: 9px 20px; border-radius: 9px; cursor: pointer;
+  }
+  .searchbox button:hover { filter: brightness(1.08); }
+  .hint { color: var(--muted); font-size: 12px; margin: 8px 4px 0; }
+
+  /* ---- 状態表示 ---- */
+  .status { margin: 22px 0; text-align: center; color: var(--text-2); font-size: 14px; }
+  .status:empty { margin: 0; }
+  .status.error { color: var(--up); }
+  .spinner {
+    display: inline-block; width: 15px; height: 15px;
+    border: 2px solid var(--line-solid); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin .7s linear infinite;
+    vertical-align: -3px; margin-right: 7px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---- 銘柄候補 ---- */
+  .candidates { margin-top: 18px; display: none; }
+  .candidates h2 {
+    font-size: 11px; color: var(--muted); margin-bottom: 8px;
+    letter-spacing: .08em; font-weight: 700;
+  }
+  .candidates ul { list-style: none; display: grid; gap: 6px; }
+  /* キーボードでも選べるよう、行そのものを button にしている */
+  .candidates button {
+    appearance: none; width: 100%; font: inherit; text-align: left;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--line-solid);
+    border-radius: 10px; padding: 12px 14px; cursor: pointer;
+    display: flex; align-items: center; gap: 12px;
+    min-height: 44px;   /* スマホでのタップ領域を確保 */
+  }
+  .candidates button:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .ccode {
+    font-variant-numeric: tabular-nums; font-weight: 700; font-size: 13px;
+    color: var(--accent-badge); background: var(--accent-soft);
+    border-radius: 6px; padding: 2px 9px; flex: none;
+  }
+  .cname { flex: 1; font-weight: 600; font-size: 14px; min-width: 0; }
+  .cmarket { color: var(--muted); font-size: 12px; flex: none; }
+
+  /* ---- 銘柄ヘッダー ---- */
+  #result { display: none; margin-top: 22px; }
+  .stockhead {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px;
+    padding-bottom: 14px; margin-bottom: 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .stockhead .scode {
+    font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 700;
+    letter-spacing: .06em;
+    color: var(--accent-badge); background: var(--accent-soft);
+    border-radius: 6px; padding: 3px 10px;
+  }
+  .stockhead .sname { font-size: 22px; font-weight: 700; letter-spacing: .01em; }
+  .stockhead .sdate {
+    margin-left: auto; color: var(--muted); font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---- 決算予定 ---- */
+  .earnings {
+    display: none; align-items: center; gap: 10px; flex-wrap: wrap;
+    background: var(--surface); border: 1px solid var(--line-solid);
+    border-radius: 12px; padding: 10px 15px; margin-bottom: 14px;
+  }
+  .earnings-label {
+    font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: .06em;
+  }
+  .earnings-date {
+    font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums;
+  }
+  .earnings-countdown {
+    font-size: 12px; font-weight: 700; color: var(--text-2);
+    background: var(--surface-2); border-radius: 6px; padding: 2px 9px;
+  }
+  .earnings-countdown.soon { color: var(--up-ink); background: var(--up-soft); }
+
+  /* ---- 数値タイル ---- */
+  .tiles {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 12px; margin-bottom: 12px;
+  }
+  .tile {
+    background: var(--surface); border: 1px solid var(--line-solid);
+    border-radius: 12px; padding: 15px 17px; box-shadow: var(--shadow);
+  }
+  .tile .label {
+    font-size: 11px; color: var(--muted); font-weight: 700; letter-spacing: .06em;
+  }
+  .tile .value {
+    font-size: 30px; font-weight: 700; margin-top: 6px;
+    letter-spacing: -.015em; line-height: 1.15;
+  }
+  .tile .value .unit {
+    font-size: 13px; font-weight: 600; color: var(--muted); margin-left: 3px;
+    letter-spacing: 0;
+  }
+  .tile .sub {
+    margin-top: 11px; padding-top: 10px; border-top: 1px solid var(--line);
+    display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+  }
+  .sublabel { font-size: 11px; color: var(--muted); font-weight: 600; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 12.5px; font-weight: 700; font-variant-numeric: tabular-nums;
+    border-radius: 6px; padding: 2px 8px;
+  }
+  .chip.up   { color: var(--up-ink);   background: var(--up-soft); }
+  .chip.down { color: var(--down-ink); background: var(--down-soft); }
+  .chip.flat { color: var(--text-2); background: var(--surface-2); }
+
+  /* ---- 株価レンジ ---- */
+  .rangecard {
+    background: var(--surface); border: 1px solid var(--line-solid);
+    border-radius: 12px; padding: 15px 17px; box-shadow: var(--shadow);
+    margin-bottom: 12px;
+  }
+  .rangecard > .label {
+    font-size: 11px; color: var(--muted); font-weight: 700; letter-spacing: .06em;
+  }
+  .range-block { margin-top: 13px; }
+  .range-block + .range-block {
+    margin-top: 14px; padding-top: 13px; border-top: 1px solid var(--line);
+  }
+  .range-sub { font-size: 11.5px; font-weight: 700; color: var(--text-2); margin-bottom: 8px; }
+  .range-vals { display: flex; flex-wrap: wrap; gap: 8px 26px; }
+  .range-item { display: flex; align-items: baseline; gap: 7px; }
+  .range-tag { font-size: 11px; font-weight: 700; border-radius: 5px; padding: 2px 7px; }
+  .range-tag.high { color: var(--up-ink);   background: var(--up-soft); }
+  .range-tag.low  { color: var(--down-ink); background: var(--down-soft); }
+  .range-price { font-size: 19px; font-weight: 700; letter-spacing: -.01em; }
+  .range-price::after {
+    content: "円"; font-size: 11px; font-weight: 600; color: var(--muted); margin-left: 2px;
+  }
+  .range-date { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .range-bar {
+    position: relative; height: 6px; border-radius: 4px; margin: 15px 3px 0;
+    background: linear-gradient(90deg, var(--down) 0%, var(--axis) 50%, var(--up) 100%);
+    opacity: .45;
+  }
+  .range-bar-marker {
+    position: absolute; top: -5px; width: 3px; height: 16px;
+    border-radius: 2px; background: var(--text);
+    box-shadow: 0 0 0 2px var(--surface);
+    transform: translateX(-50%);
+  }
+  .range-now { font-size: 11.5px; color: var(--muted); margin: 9px 3px 0; text-align: center; }
+  .range-now b { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  /* ---- グラフ ---- */
+  .chart-section { margin-top: 22px; }
+  .sec-title {
+    font-size: 14px; font-weight: 700; margin-bottom: 5px; letter-spacing: .01em;
+  }
+  .chart-note { font-size: 11.5px; color: var(--muted); margin-bottom: 10px; line-height: 1.55; }
+  .chart-card {
+    background: var(--surface); border: 1px solid var(--line-solid);
+    border-radius: 12px; box-shadow: var(--shadow);
+    padding: 14px 16px 8px; position: relative;
+  }
+  #chartHost svg { display: block; width: 100%; height: auto; }
+  #chartTip {
+    position: absolute; display: none; pointer-events: none;
+    background: var(--surface); border: 1px solid var(--line-solid);
+    border-radius: 9px; box-shadow: var(--shadow);
+    padding: 8px 11px; font-size: 12px; line-height: 1.65; z-index: 5; min-width: 158px;
+    font-variant-numeric: tabular-nums;
+  }
+  #chartTip .tdate { font-weight: 700; color: var(--text); margin-bottom: 2px; }
+  #chartTip .trow { display: flex; justify-content: space-between; gap: 14px; color: var(--muted); }
+  #chartTip .trow b { color: var(--text); font-weight: 600; }
+  #chartTip .dot {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px;
+  }
+
+  /* ---- 履歴テーブル ---- */
+  .history { margin-top: 22px; }
+  .tablewrap {
+    overflow-x: auto; background: var(--surface);
+    border: 1px solid var(--line-solid); border-radius: 12px; box-shadow: var(--shadow);
+  }
+  table {
+    border-collapse: collapse; width: 100%; min-width: 660px;
+    font-size: 13.5px; font-variant-numeric: tabular-nums;
+  }
+  th, td { padding: 9px 14px; text-align: right; white-space: nowrap; }
+  thead th {
+    position: sticky; top: 0; background: var(--surface);
+    color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .04em;
+    border-bottom: 1px solid var(--line-solid);
+  }
+  tbody th { text-align: left; font-weight: 600; color: var(--text-2); }
+  tbody tr + tr { border-top: 1px solid var(--line); }
+  tbody tr:hover { background: var(--surface-2); }
+  td.up { color: var(--up); }
+  td.down { color: var(--down); }
+  /* opacity で薄めるとコントラストが 4.5:1 を割るため、サイズ差だけで従属を示す */
+  td .pct { font-size: 11.5px; margin-left: 3px; }
+  td .pct.up   { color: var(--up); }
+  td .pct.down { color: var(--down); }
+
+  /* ---- 免責 ---- */
+  .disclaimer {
+    display: flex; align-items: flex-start; gap: 10px;
+    margin-top: 22px; padding: 12px 15px;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    color: var(--muted); font-size: 11.5px; line-height: 1.7;
+  }
+  .disclaimer svg { flex: none; margin-top: 3px; color: var(--axis); }
+  .disclaimer b {
+    display: block; color: var(--text-2);
+    font-size: 12.5px; font-weight: 700; letter-spacing: .01em;
+  }
+
+  /* ---- アカウント (上部バー右端) ---- */
+  .account { display: none; align-items: center; gap: 6px; flex: none; }
+  .account.ready { display: flex; }
+  .acctbtn {
+    appearance: none; font: inherit; font-size: 12px; font-weight: 600;
+    color: var(--text-2); background: var(--surface);
+    border: 1px solid var(--line-solid); border-radius: 999px;
+    padding: 5px 12px; cursor: pointer; white-space: nowrap;
+    min-height: 30px;
+  }
+  .acctbtn:hover { border-color: var(--accent); color: var(--text); }
+  .acctbtn.primary {
+    background: var(--accent-strong); color: var(--accent-ink);
+    border-color: transparent; font-weight: 700;
+  }
+  .acctbtn.primary:hover { filter: brightness(1.08); color: var(--accent-ink); }
+  .acctmail {
+    font-size: 12px; color: var(--muted); max-width: 190px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  /* 画面が狭いときはメールアドレスを畳む (テーマ切替とボタンを優先) */
+  @media (max-width: 720px) { .acctmail { display: none; } }
+  /* さらに狭いと1行に収まらないので、アカウント欄だけ下の段へ回す */
+  @media (max-width: 620px) {
+    .topbar { flex-wrap: wrap; row-gap: 8px; }
+    .account { width: 100%; justify-content: flex-end; }
+  }
+  @media (max-width: 420px) {
+    .themetoggle button { padding: 4px 8px; }
+  }
+
+  /* ---- 検索履歴 ---- */
+  .histpanel { display: none; margin-top: 14px; }
+  .histpanel.on { display: block; }
+  .histhead {
+    display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px;
+  }
+  .histhead h2 {
+    font-size: 11px; color: var(--muted); letter-spacing: .08em; font-weight: 700;
+  }
+  .histclear {
+    appearance: none; border: none; background: none; font: inherit;
+    font-size: 11.5px; color: var(--muted); cursor: pointer;
+    margin-left: auto; text-decoration: underline; padding: 2px;
+  }
+  .histclear:hover { color: var(--up); }
+  .histlist { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+  /* 銘柄を開くボタンと、履歴から消すボタンを1つの塊にまとめる */
+  .histitem {
+    display: flex; align-items: stretch;
+    background: var(--surface); border: 1px solid var(--line-solid);
+    border-radius: 999px; overflow: hidden;
+  }
+  .histitem:hover { border-color: var(--accent); }
+  .histitem button {
+    appearance: none; border: none; background: transparent; font: inherit;
+    color: var(--text); cursor: pointer; min-height: 32px;
+  }
+  .histopen {
+    display: flex; align-items: center; gap: 7px; padding: 3px 4px 3px 11px;
+    font-size: 13px;
+  }
+  .histopen .hcode {
+    font-variant-numeric: tabular-nums; font-weight: 700; font-size: 12px;
+    color: var(--accent-badge);
+  }
+  .histopen .hname {
+    max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .histdel {
+    padding: 0 9px 0 5px; color: var(--muted); font-size: 15px; line-height: 1;
+  }
+  .histdel:hover { color: var(--up); }
+  .histempty { color: var(--muted); font-size: 12.5px; }
+
+  /* ---- アカウント用ダイアログ ---- */
+  dialog.modal {
+    width: min(92vw, 400px); padding: 0; border: 1px solid var(--line-solid);
+    border-radius: 14px; background: var(--surface); color: var(--text);
+    box-shadow: 0 12px 40px rgba(0,0,0,.28);
+    /* 全体リセットの margin:0 が dialog 既定の margin:auto を打ち消すので戻す */
+    margin: auto;
+  }
+  dialog.modal::backdrop { background: rgba(0,0,0,.45); }
+  .modal form { padding: 20px 22px 22px; }
+  .modal h2 { font-size: 17px; font-weight: 700; letter-spacing: .01em; }
+  .modal .lead { font-size: 12.5px; color: var(--muted); margin-top: 5px; }
+  .field { margin-top: 14px; }
+  .field label {
+    display: block; font-size: 11.5px; font-weight: 700;
+    color: var(--muted); letter-spacing: .04em; margin-bottom: 5px;
+  }
+  .field input {
+    width: 100%; font: inherit; font-size: 16px;   /* 16px 未満だと iOS が拡大する */
+    color: var(--text); background: var(--surface-2);
+    border: 1px solid var(--line-solid); border-radius: 9px;
+    padding: 9px 11px; outline: none;
+  }
+  .field input:focus { border-color: var(--accent); }
+  .field .note { font-size: 11px; color: var(--muted); margin-top: 5px; }
+  .modal .submit {
+    width: 100%; margin-top: 18px; font: inherit; font-size: 14px; font-weight: 700;
+    border: none; border-radius: 9px; padding: 11px; cursor: pointer;
+    background: var(--accent-strong); color: var(--accent-ink); min-height: 44px;
+  }
+  .modal .submit:hover { filter: brightness(1.08); }
+  .modal .submit[disabled] { opacity: .6; cursor: progress; }
+  .modal .alt {
+    margin-top: 14px; padding-top: 13px; border-top: 1px solid var(--line);
+    display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px;
+  }
+  .linkbtn {
+    appearance: none; border: none; background: none; font: inherit; font-size: 12.5px;
+    color: var(--accent-strong); cursor: pointer; padding: 2px 0; text-decoration: underline;
+  }
+  .modal .msg {
+    margin-top: 13px; font-size: 12.5px; line-height: 1.6;
+    border-radius: 9px; padding: 10px 12px; word-break: break-all;
+  }
+  .modal .msg:empty { display: none; }
+  .modal .msg.err { color: var(--up-ink); background: var(--up-soft); }
+  .modal .msg.ok  { color: var(--down-ink); background: var(--down-soft); }
+  .modal .close {
+    position: absolute; top: 10px; right: 10px;
+    appearance: none; border: none; background: none; cursor: pointer;
+    color: var(--muted); font-size: 20px; line-height: 1; padding: 6px 9px;
+  }
+  .modal .close:hover { color: var(--text); }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <svg class="mark" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+      <rect x="1"  y="9"  width="3.4" height="8"  rx="1.2" fill="var(--series-buy)"/>
+      <rect x="7.3" y="4" width="3.4" height="13" rx="1.2" fill="var(--series-sell)"/>
+      <rect x="13.6" y="1" width="3.4" height="16" rx="1.2" fill="var(--series-price)"/>
+    </svg>
+    <span class="bname">信用残ウォッチ</span>
+    <!-- 英字は読み上げを英語にする (日本語音声で綴り読みされるのを防ぐ) -->
+    <span class="bsub" lang="en">Margin Balance Watch</span>
+  </div>
+  <div class="themetoggle" id="themeToggle" role="group" aria-label="表示テーマ">
+    <button type="button" data-set-theme="auto" title="OS の設定に合わせる">自動</button>
+    <button type="button" data-set-theme="light" title="ライトテーマ">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+           stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
+        <circle cx="8" cy="8" r="3.1"/>
+        <path d="M8 1v1.6M8 13.4V15M15 8h-1.6M2.6 8H1M12.9 3.1l-1.1 1.1M4.2 11.8l-1.1 1.1M12.9 12.9l-1.1-1.1M4.2 4.2L3.1 3.1"/>
+      </svg>ライト
+    </button>
+    <button type="button" data-set-theme="dark" title="ダークテーマ">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+           stroke-width="1.6" stroke-linejoin="round" aria-hidden="true">
+        <path d="M13.5 9.6A5.9 5.9 0 0 1 6.4 2.5a5.9 5.9 0 1 0 7.1 7.1Z"/>
+      </svg>ダーク
+    </button>
+  </div>
+
+  <!-- アカウント欄。API に接続できる環境でだけ表示する (JS が .ready を付ける) -->
+  <div class="account" id="accountArea">
+    <span class="acctmail" id="acctMail"></span>
+    <button type="button" class="acctbtn" id="loginBtn">ログイン</button>
+    <button type="button" class="acctbtn primary" id="registerBtn">新規登録</button>
+    <button type="button" class="acctbtn" id="logoutBtn" hidden>ログアウト</button>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="lede">
+    <h1>信用買い残・売り残・信用倍率をひと目で</h1>
+    <p>銘柄コードか銘柄名を入れると、前週比・推移グラフ・週次履歴まで表示します</p>
+  </div>
+
+  <form class="searchbox" id="searchForm" role="search">
+    <label class="visually-hidden" for="searchInput">銘柄コードまたは銘柄名</label>
+    <input id="searchInput" type="search" name="q" enterkeyhint="search"
+           placeholder="銘柄コード または 銘柄名 (例: 7203 / トヨタ)"
+           autocomplete="off" autocapitalize="off" spellcheck="false" autofocus>
+    <button type="submit">検索</button>
+  </form>
+  <p class="hint" id="searchHint">※ 信用残データは東証発表にもとづく週1回(毎週第2営業日ごろ)の更新です</p>
+
+  <!-- 検索履歴 (ログイン中のみ)。表示した銘柄をアカウントに保存して呼び出せる -->
+  <section class="histpanel" id="histPanel">
+    <div class="histhead">
+      <h2>最近見た銘柄</h2>
+      <button type="button" class="histclear" id="histClear">すべて消す</button>
+    </div>
+    <ul class="histlist" id="histList"></ul>
+  </section>
+
+  <!-- 取得中・エラー・フォールバックの案内を読み上げさせる -->
+  <div class="status" id="status" role="status" aria-live="polite"></div>
+
+  <section class="candidates" id="candidates">
+    <h2 id="candidatesTitle">検索結果 — 銘柄を選択してください</h2>
+    <ul id="candidateList"></ul>
+  </section>
+
+  <section id="result">
+    <div class="stockhead">
+      <span class="scode" id="rCode"></span>
+      <span class="sname" id="rName"></span>
+      <span class="sdate" id="rDate"></span>
+    </div>
+
+    <div class="earnings" id="earnings">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="var(--muted)"
+           stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+        <rect x="1.9" y="3" width="12.2" height="11.2" rx="2"/>
+        <path d="M1.9 6.6h12.2M5.2 1.6v2.6M10.8 1.6v2.6"/>
+      </svg>
+      <span class="earnings-label">決算発表予定日</span>
+      <span class="earnings-date" id="earningsDate"></span>
+      <span class="earnings-countdown" id="earningsCountdown"></span>
+    </div>
+
+    <div class="tiles">
+      <div class="tile">
+        <div class="label">信用買い残</div>
+        <div class="value"><span id="buyVal"></span><span class="unit">株</span></div>
+        <div class="sub">
+          <span class="sublabel">前週比</span>
+          <span class="chip" id="buyChg"></span>
+          <span class="chip" id="buyPct"></span>
+        </div>
+      </div>
+      <div class="tile">
+        <div class="label">信用売り残</div>
+        <div class="value"><span id="sellVal"></span><span class="unit">株</span></div>
+        <div class="sub">
+          <span class="sublabel">前週比</span>
+          <span class="chip" id="sellChg"></span>
+          <span class="chip" id="sellPct"></span>
+        </div>
+      </div>
+      <div class="tile">
+        <div class="label">信用倍率 (買い残 ÷ 売り残)</div>
+        <div class="value"><span id="ratioVal"></span><span class="unit">倍</span></div>
+        <div class="sub">
+          <span class="sublabel">前週比</span>
+          <span class="chip" id="ratioChg"></span>
+          <span class="sublabel">前週</span>
+          <span class="chip flat" id="ratioPrev"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="rangecard" id="rangeCard">
+      <div class="label">株価レンジ</div>
+
+      <div class="range-block" id="atBlock">
+        <div class="range-sub">上場来 (上場時からの高値・安値)</div>
+        <div class="range-vals">
+          <div class="range-item">
+            <span class="range-tag high">上場来高値</span>
+            <span class="range-price" id="atHighVal"></span>
+            <span class="range-date" id="atHighDate"></span>
+          </div>
+          <div class="range-item">
+            <span class="range-tag low">上場来安値</span>
+            <span class="range-price" id="atLowVal"></span>
+            <span class="range-date" id="atLowDate"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="range-block" id="yrBlock">
+        <div class="range-sub">年初来</div>
+        <div class="range-vals">
+          <div class="range-item">
+            <span class="range-tag high">年初来高値</span>
+            <span class="range-price" id="yearHighVal"></span>
+            <span class="range-date" id="yearHighDate"></span>
+          </div>
+          <div class="range-item">
+            <span class="range-tag low">年初来安値</span>
+            <span class="range-price" id="yearLowVal"></span>
+            <span class="range-date" id="yearLowDate"></span>
+          </div>
+        </div>
+        <div class="range-bar" id="rangeBar"><div class="range-bar-marker" id="rangeBarMarker"></div></div>
+        <div class="range-now" id="rangeNow"></div>
+      </div>
+    </div>
+
+    <div class="chart-section">
+      <h2 class="sec-title">信用残・株価の推移</h2>
+      <p class="chart-note">買い残・売り残・株価を上下に分けて表示しています(桁が違うため縦軸はそれぞれ独立)。株価は各週の申込日の終値です。グラフにマウスを合わせると各週の数値が出ます。</p>
+      <div class="chart-card">
+        <div id="chartHost"></div>
+        <div id="chartTip"></div>
+      </div>
+    </div>
+
+    <div class="history">
+      <h2 class="sec-title">信用残の推移 (週次・直近26週)</h2>
+      <div class="tablewrap">
+        <table>
+          <caption class="visually-hidden">
+            信用残の週次推移。日付、株価(終値)、買い残、買い残の前週比、売り残、売り残の前週比、信用倍率の順。
+          </caption>
+          <thead>
+            <tr>
+              <th style="text-align:left">日付</th>
+              <th>株価 (終値)</th>
+              <th>買い残 (株)</th>
+              <th>前週比 (買い)</th>
+              <th>売り残 (株)</th>
+              <th>前週比 (売り)</th>
+              <th>信用倍率</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <footer class="disclaimer">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+           stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M8 1.4 2 3.9v4.3c0 3.2 2.5 5.3 6 6.4 3.5-1.1 6-3.2 6-6.4V3.9L8 1.4Z"/>
+        <path d="M8 5.6v3.1"/><path d="M8 11.1h.01"/>
+      </svg>
+      <p>
+        <b>投資判断はご自身の責任で</b>
+        表示内容は取得時点のものです。正確性・完全性を保証するものではありません。
+      </p>
+    </footer>
+  </section>
+
+</main>
+
+<!-- ログイン / 新規登録 / パスワード再設定。中身は1つで、モードによって出し分ける -->
+<dialog class="modal" id="authModal" aria-labelledby="authTitle">
+  <button type="button" class="close" id="authClose" aria-label="閉じる">&times;</button>
+  <form id="authForm" novalidate>
+    <h2 id="authTitle">ログイン</h2>
+    <p class="lead" id="authLead"></p>
+
+    <div class="field" id="fieldEmail">
+      <label for="authEmail">メールアドレス</label>
+      <input id="authEmail" type="email" autocomplete="email" inputmode="email"
+             autocapitalize="off" spellcheck="false" placeholder="you@example.com">
+    </div>
+
+    <div class="field" id="fieldPassword">
+      <label for="authPassword" id="authPasswordLabel">パスワード</label>
+      <input id="authPassword" type="password" autocomplete="current-password">
+      <p class="note" id="authPasswordNote">8文字以上</p>
+    </div>
+
+    <button type="submit" class="submit" id="authSubmit">ログイン</button>
+    <p class="msg" id="authMsg" role="status" aria-live="polite"></p>
+
+    <div class="alt" id="authAlt"></div>
+  </form>
+</dialog>
+
+<script src="config.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => n == null ? "―" : n.toLocaleString("ja-JP");
+
+// 表示上の定数
+const TABLE_WEEKS = 26;          // 履歴テーブルに出す週数
+const CHART_WEEKS = 52;          // グラフに出す週数
+const RESIZE_DEBOUNCE_MS = 150;  // リサイズ後にグラフを描き直すまでの待ち
+const REQUEST_TIMEOUT_MS = 15000;
+
+// 検索を連続で実行したとき、遅れて返ってきた古い結果が新しい表示を
+// 上書きしないようにする世代番号。取得を始めるたびに繰り上げる。
+let requestSeq = 0;
+const startRequest = () => ++requestSeq;
+const isStale = (seq) => seq !== requestSeq;
+
+// innerHTML に入れる動的な文字列はここを通す。
+// 検索語はユーザー入力、銘柄名などは取得元由来の文字列なのでそのままでは危険。
+function esc(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/* ---- テーマ切り替え (自動 / ライト / ダーク) ---- */
+const THEME_KEY = "kabu-theme";
+
+function currentTheme() {
+  return document.documentElement.getAttribute("data-theme") || "dark";
+}
+
+function applyTheme(mode) {
+  document.documentElement.setAttribute("data-theme", mode);
+  try { localStorage.setItem(THEME_KEY, mode); } catch (e) {}
+  for (const b of $("themeToggle").querySelectorAll("button")) {
+    b.setAttribute("aria-pressed", String(b.dataset.setTheme === mode));
+  }
+  // グラフは CSS 変数の色を読んで描くため、切り替え時に描き直す
+  if (chartRows) renderChart(chartRows);
+}
+
+$("themeToggle").addEventListener("click", (ev) => {
+  const b = ev.target.closest("button[data-set-theme]");
+  if (b) applyTheme(b.dataset.setTheme);
+});
+
+function setStatus(msg, isError = false, loading = false) {
+  const el = $("status");
+  el.className = "status" + (isError ? " error" : "");
+  el.innerHTML = loading ? '<span class="spinner"></span>' + msg : msg;
+}
+
+// 増減チップ。色だけに頼らないよう ▲▼ を必ず添える。
+// digits を渡すと小数桁を固定する (% の桁を揃えるため)
+function chip(el, num, unit, digits) {
+  if (num == null) {
+    el.textContent = "―";
+    el.className = "chip flat";
+    return;
+  }
+  const opt = digits == null
+    ? { maximumFractionDigits: 2 }
+    : { minimumFractionDigits: digits, maximumFractionDigits: digits };
+  const arrow = num > 0 ? "▲" : num < 0 ? "▼" : "―";
+  const body = Math.abs(num).toLocaleString("ja-JP", opt) + unit;
+  el.textContent = num === 0 ? "±0" + unit : arrow + " " + body;
+  el.className = "chip " + (num > 0 ? "up" : num < 0 ? "down" : "flat");
+}
+
+// 信用倍率の前週差 (倍率は増減率が直感的でないので差で見せる)
+function ratioDiff(row, prevRow) {
+  if (!row || row.ratio == null || !prevRow || prevRow.ratio == null) return null;
+  return row.ratio - prevRow.ratio;
+}
+
+// テーブルの信用倍率セル。値は通常の文字色のまま、前週差だけ ▲▼ と色で添える。
+function ratioCell(row, prevRow) {
+  if (row.ratio == null) return "<td>―</td>";
+  const d = ratioDiff(row, prevRow);
+  if (d == null || d === 0) return `<td>${row.ratio.toFixed(2)}</td>`;
+  const cls = d > 0 ? "up" : "down";
+  const arrow = d > 0 ? "▲" : "▼";
+  return `<td>${row.ratio.toFixed(2)}<span class="pct ${cls}">${arrow}${Math.abs(d).toFixed(2)}</span></td>`;
+}
+
+function changeCell(chg, pct) {
+  if (chg == null) return "<td>―</td>";
+  const cls = chg > 0 ? "up" : chg < 0 ? "down" : "";
+  const arrow = chg > 0 ? "▲" : chg < 0 ? "▼" : "";
+  const pctStr = pct == null ? "" :
+    `<span class="pct">(${Math.abs(pct).toFixed(1)}%)</span>`;
+  return `<td class="${cls}">${arrow}${fmt(Math.abs(chg))}${pctStr}</td>`;
+}
+
+function showResult(data) {
+  const latest = data.rows[0];
+  const prev = data.rows[1];
+
+  $("rCode").textContent = data.code;
+  $("rName").textContent = data.name;
+  $("rDate").textContent = latest.date + " 申込時点";
+
+  showRange(data);
+  showEarnings(data.earnings);
+
+  $("buyVal").textContent = fmt(latest.buy);
+  chip($("buyChg"), latest.buyChange, " 株");
+  chip($("buyPct"), latest.buyPct, " %", 2);
+
+  $("sellVal").textContent = fmt(latest.sell);
+  chip($("sellChg"), latest.sellChange, " 株");
+  chip($("sellPct"), latest.sellPct, " %", 2);
+
+  $("ratioVal").textContent = latest.ratio == null ? "―" : latest.ratio.toFixed(2);
+  chip($("ratioChg"), ratioDiff(latest, prev), " 倍", 2);
+  $("ratioPrev").textContent = prev && prev.ratio != null ? prev.ratio.toFixed(2) + " 倍" : "―";
+
+  $("historyBody").innerHTML = data.rows.slice(0, TABLE_WEEKS).map((r, i) => `
+    <tr>
+      <th>${esc(r.date)}</th>
+      <td>${r.close == null ? "―" : fmt(r.close) + " 円"}</td>
+      <td>${fmt(r.buy)}</td>
+      ${changeCell(r.buyChange, r.buyPct)}
+      <td>${fmt(r.sell)}</td>
+      ${changeCell(r.sellChange, r.sellPct)}
+      ${ratioCell(r, data.rows[i + 1])}
+    </tr>`).join("");
+
+  $("result").style.display = "block";
+  renderChart(data.rows.slice(0, CHART_WEEKS));
+
+  // ログイン中なら、見た銘柄をアカウントの検索履歴に残す
+  recordSearch(data.code, data.name);
+}
+
+/* ---- 決算発表予定日 ---- */
+function showEarnings(e) {
+  const box = $("earnings");
+  if (!e || !e.iso) { box.style.display = "none"; return; }
+  box.style.display = "flex";
+
+  const wd = ["日", "月", "火", "水", "木", "金", "土"];
+  const d = new Date(e.iso + "T00:00:00");
+  $("earningsDate").textContent =
+    `${e.date}（${wd[d.getDay()]}）` + (e.planned ? " 予定" : "");
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const days = Math.round((d - today) / 86400000);
+  const cd = $("earningsCountdown");
+  cd.classList.remove("soon");
+  if (days > 0) {
+    cd.textContent = `あと${days}日`;
+    if (days <= 7) cd.classList.add("soon");
+  } else if (days === 0) {
+    cd.textContent = "本日";
+    cd.classList.add("soon");
+  } else {
+    cd.textContent = "発表済み";
+  }
+}
+
+/* ---- 株価レンジ (上場来 / 年初来の高値・安値) ---- */
+function fillRangeBlock(ids, hi, lo, now, rangeLabel) {
+  const block = $(ids.block);
+  if (!hi || hi.value == null || !lo || lo.value == null) {
+    block.style.display = "none";
+    return false;
+  }
+  block.style.display = "";
+  $(ids.highVal).textContent = fmt(hi.value);
+  $(ids.lowVal).textContent = fmt(lo.value);
+  $(ids.highDate).textContent = hi.date ? "(" + hi.date + ")" : "";
+  $(ids.lowDate).textContent = lo.date ? "(" + lo.date + ")" : "";
+
+  if (now != null && hi.value > lo.value) {
+    const pct = Math.max(0, Math.min(1, (now - lo.value) / (hi.value - lo.value)));
+    $(ids.bar).style.display = "";
+    $(ids.marker).style.left = (pct * 100).toFixed(1) + "%";
+    $(ids.now).innerHTML =
+      `現在値 <b>${fmt(now)}円</b> ＝ ${rangeLabel}レンジの下から <b>${Math.round(pct * 100)}%</b> の位置`;
+  } else {
+    $(ids.bar).style.display = "none";
+    $(ids.now).textContent = "";
+  }
+  return true;
+}
+
+// 上場来ブロック: 分割前の額面ベースの値のため、現在値とのレンジバーは出さず値のみ表示
+function fillValuesOnly(ids, hi, lo) {
+  const block = $(ids.block);
+  if (!hi || hi.value == null || !lo || lo.value == null) {
+    block.style.display = "none";
+    return false;
+  }
+  block.style.display = "";
+  $(ids.highVal).textContent = fmt(hi.value);
+  $(ids.lowVal).textContent = fmt(lo.value);
+  $(ids.highDate).textContent = hi.date ? "(" + hi.date + ")" : "";
+  $(ids.lowDate).textContent = lo.date ? "(" + lo.date + ")" : "";
+  return true;
+}
+
+function showRange(data) {
+  const now = data.price;
+
+  const atShown = fillValuesOnly(
+    { block: "atBlock", highVal: "atHighVal", lowVal: "atLowVal",
+      highDate: "atHighDate", lowDate: "atLowDate" },
+    data.allTimeHigh, data.allTimeLow
+  );
+
+  const yrShown = fillRangeBlock(
+    { block: "yrBlock", highVal: "yearHighVal", lowVal: "yearLowVal",
+      highDate: "yearHighDate", lowDate: "yearLowDate",
+      bar: "rangeBar", marker: "rangeBarMarker", now: "rangeNow" },
+    data.yearHigh, data.yearLow, now, "年初来"
+  );
+
+  $("rangeCard").style.display = atShown || yrShown ? "" : "none";
+}
+
+/* ---- 信用残推移グラフ (SVG 折れ線) ---- */
+let chartRows = null;
+
+function fmtAxis(n) {
+  if (n == null) return "";
+  const abs = Math.abs(n);
+  if (abs >= 1e8) return (n / 1e8).toLocaleString("ja-JP", { maximumFractionDigits: 1 }) + "億";
+  if (abs >= 1e4) return Math.round(n / 1e4).toLocaleString("ja-JP") + "万";
+  return n.toLocaleString("ja-JP");
+}
+
+function niceTicks(min, max, count) {
+  const span = max - min || Math.abs(max) || 1;
+  const step0 = span / count;
+  const mag = Math.pow(10, Math.floor(Math.log10(step0)));
+  let step = mag;
+  for (const m of [1, 2, 2.5, 5, 10]) if (step0 <= m * mag) { step = m * mag; break; }
+  const lo = Math.floor(min / step) * step;
+  const ticks = [];
+  for (let v = lo; v <= max + step * 0.5; v += step) if (v >= min - step * 0.5) ticks.push(v);
+  return ticks;
+}
+
+// 買い残・売り残は桁が違う(例: 2000万 vs 100万)ため同じ縦軸だと売り残が潰れる。
+// そこで上下3段(スモールマルチプル)にして、それぞれ独立した縦軸で描く。
+// 各パネルは1系列なので、色ではなくパネル見出しが系列を示す。
+function renderChart(rows) {
+  chartRows = rows;
+  const host = $("chartHost");
+  const data = rows.slice().reverse().filter((r) => r.buy != null || r.sell != null);
+  if (data.length < 2) { host.innerHTML = ""; return; }
+
+  const css = getComputedStyle(document.documentElement);
+  const v = (name) => css.getPropertyValue(name).trim();
+  const cBuy = v("--series-buy");
+  const cSell = v("--series-sell");
+  const cPrice = v("--series-price");
+  const cGrid = v("--grid");
+  const cAxis = v("--axis");
+  const cMuted = v("--muted");
+  const cText = v("--text");
+  const cSurface = v("--surface");
+
+  const specs = [
+    { key: "buy",   color: cBuy,   name: "信用買い残", unit: "株", zero: true },
+    { key: "sell",  color: cSell,  name: "信用売り残", unit: "株", zero: true },
+    { key: "close", color: cPrice, name: "株価 (終値)", unit: "円", zero: false },
+  ].filter((s) => data.some((r) => r[s.key] != null));
+
+  const W = Math.max(host.clientWidth || 780, 320);
+  const mL = 54, mR = 14;
+  const iw = W - mL - mR;
+  const titleH = 26, gap = 22, xAxisH = 26, mTop = 4;
+  const plotH = specs.length >= 3 ? 102 : 118;
+  const H = mTop + (titleH + plotH) * specs.length + gap * (specs.length - 1) + xAxisH;
+
+  const n = data.length;
+  const X = (i) => mL + (i * iw) / (n - 1);
+
+  const xStep = Math.max(1, Math.ceil(n / 6));
+  const xLabels = [];
+  for (let i = 0; i < n; i += xStep) xLabels.push(i);
+  if (xLabels[xLabels.length - 1] !== n - 1) xLabels.push(n - 1);
+  const shortDate = (d) => d.replace(/^\d{4}\//, "");
+
+  const lastIdx = (key) => { for (let i = n - 1; i >= 0; i--) if (data[i][key] != null) return i; return -1; };
+  const panels = {};
+
+  function drawPanel(spec, plotTop) {
+    const { key, color, name, unit, zero } = spec;
+    const plotBottom = plotTop + plotH;
+    const vals = data.map((r) => r[key]).filter((x) => x != null);
+    let lo, hi;
+    if (zero) {                       // 残高: 0起点・上に余白
+      lo = 0; hi = Math.max(...vals) * 1.14 || 1;
+    } else {                          // 株価: 変動が見えるよう0起点にしない
+      const mn = Math.min(...vals), mx = Math.max(...vals);
+      const pad = (mx - mn || mx || 1) * 0.12;
+      lo = mn - pad; hi = mx + pad;
+    }
+    const Y = (val) => plotBottom - ((val - lo) / (hi - lo)) * plotH;
+    panels[key] = { plotTop, plotBottom, Y };
+
+    let s = "";
+    for (const t of niceTicks(lo, hi, zero ? 2 : 3).filter((t) => t >= lo && t <= hi)) {
+      const y = Y(t).toFixed(1);
+      s += `<line x1="${mL}" y1="${y}" x2="${W - mR}" y2="${y}" stroke="${cGrid}" stroke-width="1"/>`;
+      s += `<text x="${mL - 9}" y="${(Y(t) + 4).toFixed(1)}" text-anchor="end" font-size="10.5" fill="${cMuted}">${fmtAxis(t)}</text>`;
+    }
+    s += `<line x1="${mL}" y1="${plotBottom}" x2="${W - mR}" y2="${plotBottom}" stroke="${cAxis}" stroke-width="1"/>`;
+
+    let line = "", pen = false, first = null, last = null;
+    data.forEach((r, i) => {
+      if (r[key] == null) { pen = false; return; }
+      const x = X(i), y = Y(r[key]);
+      line += (pen ? "L" : "M") + x.toFixed(1) + "," + y.toFixed(1);
+      if (first === null) first = x;
+      last = x;
+      pen = true;
+    });
+    if (first !== null) {
+      s += `<path d="${line}L${last.toFixed(1)},${plotBottom}L${first.toFixed(1)},${plotBottom}Z" fill="${color}" fill-opacity="0.10"/>`;
+    }
+    s += `<path d="${line}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+
+    // パネル見出し(系列名 + 最新値) — 1系列なので凡例の代わりに直接ラベルする
+    const li = lastIdx(key);
+    const latest = li >= 0 ? fmt(data[li][key]) + " " + unit : "―";
+    s += `<rect x="${mL}" y="${plotTop - 15}" width="9" height="9" rx="2.5" fill="${color}"/>`;
+    s += `<text x="${mL + 15}" y="${plotTop - 7}" font-size="12.5" font-weight="700" fill="${cText}">${name}</text>`;
+    s += `<text x="${W - mR}" y="${plotTop - 7}" text-anchor="end" font-size="11.5" fill="${cMuted}">最新 <tspan font-weight="700" fill="${cText}">${latest}</tspan></text>`;
+    return s;
+  }
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="買い残・売り残・株価の週次推移">`;
+  specs.forEach((spec, p) => {
+    const plotTop = mTop + titleH + p * (titleH + plotH + gap);
+    svg += drawPanel(spec, plotTop);
+  });
+
+  for (const i of xLabels) {
+    svg += `<text x="${X(i).toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="10.5" fill="${cMuted}">${shortDate(data[i].date)}</text>`;
+  }
+
+  // ホバー: 全パネルをまたぐ縦線 + 各ラインのドット
+  const crossTop = panels[specs[0].key].plotTop;
+  const crossBottom = panels[specs[specs.length - 1].key].plotBottom;
+  svg += `<line id="chartCross" x1="0" y1="${crossTop}" x2="0" y2="${crossBottom}" stroke="${cMuted}" stroke-width="1" stroke-dasharray="3,3" visibility="hidden"/>`;
+  for (const spec of specs) {
+    svg += `<circle id="hover_${spec.key}" r="4.5" fill="${spec.color}" stroke="${cSurface}" stroke-width="2" visibility="hidden"/>`;
+  }
+  svg += `<rect id="chartOverlay" x="${mL}" y="${crossTop}" width="${iw}" height="${crossBottom - crossTop}" fill="transparent"/>`;
+  svg += `</svg>`;
+
+  host.innerHTML = svg;
+
+  const overlay = document.getElementById("chartOverlay");
+  const cross = document.getElementById("chartCross");
+  const tip = $("chartTip");
+  const svgEl = host.querySelector("svg");
+
+  function onMove(ev) {
+    const rect = svgEl.getBoundingClientRect();
+    const scale = W / rect.width;
+    const px = (ev.clientX - rect.left) * scale;
+    let i = Math.round(((px - mL) / iw) * (n - 1));
+    i = Math.max(0, Math.min(n - 1, i));
+    const r = data[i];
+    const x = X(i);
+    cross.setAttribute("x1", x); cross.setAttribute("x2", x);
+    cross.setAttribute("visibility", "visible");
+    for (const spec of specs) {
+      const dot = document.getElementById("hover_" + spec.key);
+      if (r[spec.key] != null) {
+        dot.setAttribute("cx", x);
+        dot.setAttribute("cy", panels[spec.key].Y(r[spec.key]));
+        dot.setAttribute("visibility", "visible");
+      } else dot.setAttribute("visibility", "hidden");
+    }
+
+    tip.innerHTML =
+      `<div class="tdate">${esc(r.date)}</div>` +
+      `<div class="trow"><span><span class="dot" style="background:${cBuy}"></span>買い残</span><b>${fmt(r.buy)}</b></div>` +
+      `<div class="trow"><span><span class="dot" style="background:${cSell}"></span>売り残</span><b>${fmt(r.sell)}</b></div>` +
+      `<div class="trow"><span>信用倍率</span><b>${r.ratio == null ? "―" : r.ratio.toFixed(2) + " 倍"}</b></div>` +
+      `<div class="trow"><span><span class="dot" style="background:${cPrice}"></span>株価</span><b>${r.close == null ? "―" : fmt(r.close) + " 円"}</b></div>`;
+    tip.style.display = "block";
+    const card = tip.parentElement;
+    const cardRect = card.getBoundingClientRect();
+    let tx = ev.clientX - cardRect.left + 14;
+    if (tx + tip.offsetWidth > cardRect.width - 8) tx = ev.clientX - cardRect.left - tip.offsetWidth - 14;
+    let ty = ev.clientY - cardRect.top - tip.offsetHeight - 10;
+    if (ty < 4) ty = ev.clientY - cardRect.top + 16;
+    tip.style.left = tx + "px";
+    tip.style.top = ty + "px";
+  }
+  function onLeave() {
+    cross.setAttribute("visibility", "hidden");
+    for (const spec of specs) document.getElementById("hover_" + spec.key).setAttribute("visibility", "hidden");
+    tip.style.display = "none";
+  }
+  overlay.addEventListener("pointermove", onMove);
+  overlay.addEventListener("pointerleave", onLeave);
+}
+
+let resizeTimer = null;
+window.addEventListener("resize", () => {
+  if (!chartRows) return;
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => renderChart(chartRows), RESIZE_DEBOUNCE_MS);
+});
+// 「自動」のときだけ OS のテーマ変更に追従する
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+  if (chartRows && currentTheme() === "auto") renderChart(chartRows);
+});
+
+/* ---- データ取得元の決定 ----
+   1. localhost で server.js が動いている        → 同一オリジンの /api/...
+   2. config.js に KABU_API_BASE が設定されている → そのURLの /api/... (任意銘柄をその場で取得)
+   3. どちらでもない / API に届かない            → data/<code>.json (保存済みデータ)      */
+const IS_LOCAL = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
+const API_BASE = (IS_LOCAL ? "" : (window.KABU_API_BASE || "")).replace(/\/+$/, "");
+const USE_API = IS_LOCAL || API_BASE !== "";
+
+// 応答が返らないまま読み込み表示が残り続けるのを防ぐ
+async function apiGet(path) {
+  const res = await fetch(API_BASE + path, {
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+  // API が無いホスティングでは 404 の HTML が返るため、JSON 以外は失敗扱いにする
+  if (!(res.headers.get("content-type") || "").includes("application/json")) {
+    throw new Error("API に接続できませんでした");
+  }
+  return res.json();
+}
+
+// 通信失敗の理由を画面向けの文言にする
+function requestErrorMessage(e) {
+  if (e && (e.name === "TimeoutError" || e.name === "AbortError")) {
+    return `応答がないため中断しました (${REQUEST_TIMEOUT_MS / 1000}秒)。`;
+  }
+  return "API に接続できませんでした。";
+}
+
+const API_HINT = "任意の銘柄をその場で取得するには API のデプロイが必要です (README を参照)。";
+
+function savedAtLabel(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d)) return "";
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}/${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+// 保存済み JSON (GitHub Actions が定期更新) から表示する。
+// apiError には、API 側で失敗したときにその理由を渡す。
+async function loadSavedMargin(code, apiError, seq) {
+  try {
+    // 一覧に無い銘柄は保存ファイルも無い。取りに行かずに済ませる
+    // (無駄なリクエストと、コンソールに出る 404 を防ぐ)
+    const saved = await loadSavedIndex();
+    if (isStale(seq)) return;
+    if (saved.length && !saved.some((s) => s.code === code)) throw new Error("not saved");
+
+    const res = await fetch(`./data/${encodeURIComponent(code)}.json`, {
+      cache: "no-cache",
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+    if (!res.ok) throw new Error("not found");
+    const data = await res.json();
+    if (isStale(seq)) return;   // 別の検索が始まっていたら描画しない
+    if (!Array.isArray(data.rows) || !data.rows.length) throw new Error("empty");
+    if (!data.source) data.source = `https://finance.yahoo.co.jp/quote/${code}.T/margin`;
+    const at = savedAtLabel(data.savedAt);
+    setStatus(
+      (apiError ? apiError + "<br>" : "") +
+        `保存済みデータを表示しています${at ? ` (最終更新 ${at})` : ""}`,
+      !!apiError
+    );
+    showResult(data);
+  } catch (e) {
+    if (isStale(seq)) return;
+    setStatus(
+      apiError || `「${esc(code)}」の保存済みデータがありません。${USE_API ? "" : API_HINT}`,
+      true
+    );
+  }
+}
+
+async function loadMargin(code) {
+  const seq = startRequest();
+  $("candidates").style.display = "none";
+  $("result").style.display = "none";
+  setStatus(`「${esc(code)}」の信用残データを取得中…`, false, true);
+
+  if (USE_API) {
+    let apiError = null;
+    try {
+      const data = await apiGet("/api/margin?code=" + encodeURIComponent(code));
+      if (isStale(seq)) return;   // 別の検索が始まっていたら描画しない
+      if (!data.error) {
+        // stale = 取得元が混雑していたため API 側が保存済みを返した
+        const at = data.stale ? savedAtLabel(data.savedAt) : "";
+        setStatus(
+          data.stale
+            ? `取得元が混み合っているため、保存済みデータを表示しています${at ? ` (最終更新 ${at})` : ""}`
+            : ""
+        );
+        showResult(data);
+        return;
+      }
+      apiError = data.error;
+    } catch (e) {
+      if (isStale(seq)) return;
+      apiError = requestErrorMessage(e);
+    }
+    // 取得元が混雑している / API に届かない場合でも、保存済みがあれば表示する
+    return loadSavedMargin(code, apiError, seq);
+  }
+  await loadSavedMargin(code, null, seq);
+}
+
+function showCandidates(title, results) {
+  $("candidatesTitle").textContent = title;
+  // 銘柄名は取得元由来の文字列なのでエスケープしてから埋め込む
+  $("candidateList").innerHTML = results.map((r) => `
+    <li>
+      <button type="button" data-code="${esc(r.code)}">
+        <span class="ccode">${esc(r.code)}</span>
+        <span class="cname">${esc(r.name)}</span>
+        <span class="cmarket">${esc(r.market || "")}</span>
+      </button>
+    </li>`).join("");
+  $("candidates").style.display = "block";
+}
+
+// 保存済み銘柄の一覧 (data/index.json)。API が無いときの検索対象にもなる。
+let savedIndexPromise = null;
+function loadSavedIndex() {
+  if (!savedIndexPromise) {
+    savedIndexPromise = fetch("./data/index.json", { cache: "no-cache" })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((j) => (Array.isArray(j) ? j : j.stocks || []))
+      .catch(() => []);
+  }
+  return savedIndexPromise;
+}
+
+async function searchSaved(q, apiError, seq) {
+  const list = await loadSavedIndex();
+  if (isStale(seq)) return;   // 別の検索が始まっていたら描画しない
+  const needle = q.toLowerCase();
+  const hits = list.filter(
+    (s) => s.code.toLowerCase().includes(needle) || (s.name || "").toLowerCase().includes(needle)
+  );
+  if (!hits.length) {
+    setStatus(
+      (apiError ? apiError + "<br>" : "") +
+        `保存済みの銘柄に「${esc(q)}」は見つかりませんでした。${USE_API ? "" : API_HINT}`,
+      true
+    );
+    return;
+  }
+  if (hits.length === 1) return loadMargin(hits[0].code);
+  setStatus(apiError ? apiError + "<br>保存済みの銘柄から表示します" : "", !!apiError);
+  showCandidates("保存済みの銘柄から — 銘柄を選択してください", hits);
+}
+
+async function searchByName(q) {
+  const seq = startRequest();
+  $("candidates").style.display = "none";
+  $("result").style.display = "none";
+  setStatus(`「${esc(q)}」を検索中…`, false, true);
+
+  if (USE_API) {
+    let apiError = null;
+    try {
+      const data = await apiGet("/api/search?q=" + encodeURIComponent(q));
+      if (isStale(seq)) return;   // 別の検索が始まっていたら描画しない
+      if (!data.error) {
+        if (!data.results.length) {
+          setStatus(`「${esc(q)}」に一致する銘柄が見つかりませんでした`, true);
+          return;
+        }
+        if (data.results.length === 1) return loadMargin(data.results[0].code);
+        setStatus("");
+        showCandidates("検索結果 — 銘柄を選択してください", data.results);
+        return;
+      }
+      apiError = data.error;
+    } catch (e) {
+      if (isStale(seq)) return;
+      apiError = requestErrorMessage(e);
+    }
+    return searchSaved(q, apiError, seq);
+  }
+  await searchSaved(q, null, seq);
+}
+
+$("searchForm").addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  const q = $("searchInput").value.trim();
+  if (!q) return;
+  // 4〜5桁の英数字なら銘柄コードとみなして直接取得、それ以外は名前検索
+  if (/^[0-9][0-9A-Za-z]{3,4}$/.test(q)) {
+    loadMargin(q.toUpperCase());
+  } else {
+    searchByName(q);
+  }
+});
+
+// 行は button なので Enter / Space でも選べる (クリックは委譲で1つだけ登録)
+$("candidateList").addEventListener("click", (ev) => {
+  const btn = ev.target.closest("button[data-code]");
+  if (btn) loadMargin(btn.dataset.code);
+});
+
+/* ================= アカウントと検索履歴 =================
+   画面(GitHub Pages)と API(Vercel) はドメインが違うため、Cookie ではなく
+   トークンを localStorage に置いて Authorization ヘッダーで送る。
+   別ドメインの Cookie を既定で捨てるブラウザでも同じように動く。 */
+
+const TOKEN_KEY = "kabu-token";
+let currentUser = null;      // { email, createdAt } / 未ログインは null
+let historyItems = [];
+let authMode = "login";
+let resetToken = "";
+
+function getToken() {
+  try { return localStorage.getItem(TOKEN_KEY) || ""; } catch (e) { return ""; }
+}
+function setToken(t) {
+  try {
+    if (t) localStorage.setItem(TOKEN_KEY, t);
+    else localStorage.removeItem(TOKEN_KEY);
+  } catch (e) {}
+}
+
+async function authApi(action, body) {
+  const token = getToken();
+  const headers = {};
+  if (body) headers["Content-Type"] = "application/json";
+  if (token) headers.Authorization = "Bearer " + token;
+
+  let res;
+  try {
+    res = await fetch(`${API_BASE}/api/auth?action=${action}`, {
+      method: body ? "POST" : "GET",
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+  } catch (e) {
+    // 中断やネットワーク断は英語の既定文言なので、画面向けに言い換える
+    throw new Error(requestErrorMessage(e));
+  }
+  let data = {};
+  try { data = await res.json(); } catch (e) {}
+  if (!res.ok) {
+    const err = new Error(data.error || requestErrorMessage(null));
+    err.status = res.status;
+    err.unavailable = Boolean(data.unavailable);
+    throw err;
+  }
+  return data;
+}
+
+// セッション切れ (401) は黙ってログアウト状態に戻す
+function signedOut() {
+  setToken("");
+  currentUser = null;
+  historyItems = [];
+  renderAccount();
+}
+
+/* ---- 上部バーの表示 ---- */
+function renderAccount() {
+  const on = Boolean(currentUser);
+  $("acctMail").textContent = on ? currentUser.email : "";
+  $("loginBtn").hidden = on;
+  $("registerBtn").hidden = on;
+  $("logoutBtn").hidden = !on;
+  $("histPanel").classList.toggle("on", on);
+  if (on) renderHistory();
+}
+
+/* ---- 検索履歴 ---- */
+function renderHistory() {
+  const list = $("histList");
+  if (!historyItems.length) {
+    list.innerHTML = '<li class="histempty">検索した銘柄がここに並びます</li>';
+    $("histClear").hidden = true;
+    return;
+  }
+  $("histClear").hidden = false;
+  // 銘柄名は取得元由来の文字列なのでエスケープしてから埋め込む
+  list.innerHTML = historyItems.map((h) => `
+    <li class="histitem">
+      <button type="button" class="histopen" data-code="${esc(h.code)}">
+        <span class="hcode">${esc(h.code)}</span>
+        <span class="hname">${esc(h.name || "")}</span>
+      </button>
+      <button type="button" class="histdel" data-del="${esc(h.code)}"
+              title="履歴から削除" aria-label="${esc(h.code)} を履歴から削除">&times;</button>
+    </li>`).join("");
+}
+
+async function loadHistory() {
+  if (!currentUser) return;
+  try {
+    historyItems = (await authApi("history")).history || [];
+  } catch (e) {
+    if (e.status === 401) return signedOut();
+    historyItems = [];
+  }
+  renderHistory();
+}
+
+// 銘柄を表示できたときに履歴へ積む。失敗しても画面の表示は妨げない。
+async function recordSearch(code, name) {
+  if (!currentUser || !code) return;
+  try {
+    historyItems = (await authApi("history-add", { code, name })).history || historyItems;
+    renderHistory();
+  } catch (e) {
+    if (e.status === 401) signedOut();
+  }
+}
+
+$("histList").addEventListener("click", async (ev) => {
+  const open = ev.target.closest("button[data-code]");
+  if (open) return loadMargin(open.dataset.code);
+
+  const del = ev.target.closest("button[data-del]");
+  if (!del) return;
+  try {
+    historyItems = (await authApi("history-remove", { code: del.dataset.del })).history || [];
+    renderHistory();
+  } catch (e) {
+    if (e.status === 401) signedOut();
+  }
+});
+
+$("histClear").addEventListener("click", async () => {
+  if (!confirm("検索履歴をすべて消しますか?")) return;
+  try {
+    await authApi("history-clear", {});
+    historyItems = [];
+    renderHistory();
+  } catch (e) {
+    if (e.status === 401) signedOut();
+  }
+});
+
+/* ---- ダイアログ ---- */
+const AUTH_TEXT = {
+  login: {
+    title: "ログイン",
+    lead: "登録したメールアドレスとパスワードを入力してください",
+    submit: "ログイン",
+    alt: [["register", "新規登録はこちら"], ["forgot", "パスワードを忘れた方"]],
+  },
+  register: {
+    title: "新規登録",
+    lead: "メールアドレスとパスワードだけで登録できます",
+    submit: "登録する",
+    alt: [["login", "ログインはこちら"]],
+  },
+  forgot: {
+    title: "パスワードの再設定",
+    lead: "登録したメールアドレス宛に、再設定用のリンクを送ります",
+    submit: "再設定メールを送る",
+    alt: [["login", "ログインに戻る"]],
+  },
+  reset: {
+    title: "新しいパスワードの設定",
+    lead: "新しいパスワードを入力してください",
+    submit: "パスワードを変更する",
+    alt: [["login", "ログインに戻る"]],
+  },
+};
+
+function setAuthMsg(html, kind) {
+  const el = $("authMsg");
+  el.innerHTML = html || "";
+  el.className = "msg" + (html ? " " + kind : "");
+}
+
+function setAuthMode(mode) {
+  authMode = mode;
+  const t = AUTH_TEXT[mode];
+  $("authTitle").textContent = t.title;
+  $("authLead").textContent = t.lead;
+  $("authSubmit").textContent = t.submit;
+
+  // 再設定はリンクの持ち主が確定しているのでアドレス欄は出さない
+  $("fieldEmail").hidden = mode === "reset";
+  $("fieldPassword").hidden = mode === "forgot";
+  $("authPasswordLabel").textContent = mode === "reset" ? "新しいパスワード" : "パスワード";
+  $("authPassword").autocomplete = mode === "login" ? "current-password" : "new-password";
+  $("authPasswordNote").hidden = mode === "login";
+  $("authPassword").value = "";
+
+  // 固定の文言だけなので innerHTML で組み立てて問題ない
+  $("authAlt").innerHTML = t.alt
+    .map(([m, label]) => `<button type="button" class="linkbtn" data-mode="${m}">${label}</button>`)
+    .join("");
+  setAuthMsg("");
+}
+
+function openAuth(mode) {
+  setAuthMode(mode);
+  const dlg = $("authModal");
+  if (!dlg.open) dlg.showModal();
+  const first = mode === "reset" ? $("authPassword") : $("authEmail");
+  first.focus();
+}
+
+$("loginBtn").addEventListener("click", () => openAuth("login"));
+$("registerBtn").addEventListener("click", () => openAuth("register"));
+$("authClose").addEventListener("click", () => $("authModal").close());
+$("authAlt").addEventListener("click", (ev) => {
+  const b = ev.target.closest("button[data-mode]");
+  if (b) openAuth(b.dataset.mode);
+});
+
+$("logoutBtn").addEventListener("click", async () => {
+  try { await authApi("logout", {}); } catch (e) { /* 通信できなくても手元は消す */ }
+  signedOut();
+  setStatus("ログアウトしました");
+});
+
+// 再設定が済んだらURLからトークンを消す (再読み込みや共有で漏れないように)
+function clearResetParam() {
+  const url = new URL(location.href);
+  url.searchParams.delete("reset");
+  history.replaceState(null, "", url.pathname + url.search + url.hash);
+}
+
+async function onAuthSubmit(ev) {
+  ev.preventDefault();
+  const email = $("authEmail").value.trim();
+  const password = $("authPassword").value;
+  const btn = $("authSubmit");
+
+  if (authMode !== "reset" && !email) {
+    return setAuthMsg("メールアドレスを入力してください", "err");
+  }
+  if (authMode !== "forgot" && !password) {
+    return setAuthMsg("パスワードを入力してください", "err");
+  }
+
+  btn.disabled = true;
+  setAuthMsg("");
+  try {
+    if (authMode === "login" || authMode === "register") {
+      const d = await authApi(authMode, { email, password });
+      setToken(d.token);
+      currentUser = d.user;
+      renderAccount();
+      $("authModal").close();
+      await loadHistory();
+      setStatus(authMode === "register" ? "登録しました。ログインしています" : "ログインしました");
+    } else if (authMode === "forgot") {
+      const d = await authApi("forgot", { email });
+      if (d.devResetUrl) {
+        // SMTP 未設定の開発中。メールの代わりに画面からリンクをたどれるようにする
+        setAuthMsg(
+          `${esc(d.message)}<br><a href="${esc(d.devResetUrl)}">再設定リンクを開く</a>`,
+          "ok"
+        );
+      } else {
+        setAuthMsg(esc(d.message), "ok");
+      }
+    } else if (authMode === "reset") {
+      const d = await authApi("reset", { token: resetToken, password });
+      setToken(d.token);
+      currentUser = d.user;
+      renderAccount();
+      clearResetParam();
+      setAuthMsg("パスワードを変更しました。このままログインしています", "ok");
+      await loadHistory();
+    }
+  } catch (e) {
+    setAuthMsg(esc(e.message || "うまくいきませんでした"), "err");
+  } finally {
+    btn.disabled = false;
+  }
+}
+$("authForm").addEventListener("submit", onAuthSubmit);
+
+/* ---- 起動時 ----
+   API が無い環境 (保存済みデータモード) や、保存先が未設定の本番では
+   アカウント欄そのものを出さない。押しても使えないボタンを見せないため。 */
+async function initAccount() {
+  if (!USE_API) return;
+  try {
+    const d = await authApi("me");
+    currentUser = d.user || null;
+  } catch (e) {
+    if (e.status === 401) {
+      setToken("");           // 期限切れのトークンが残っていた
+    } else if (e.unavailable || e.status === 503) {
+      return;                 // 保存先が未設定 — アカウント欄は出さない
+    } else {
+      return;                 // API に届かない
+    }
+  }
+  $("accountArea").classList.add("ready");
+  renderAccount();
+  if (currentUser) await loadHistory();
+
+  // メールのリンク (?reset=...) から来たときは、そのまま再設定に進む
+  if (resetToken) openAuth("reset");
+}
+
+applyTheme(currentTheme());
+
+// パラメータは URL から消す前に控えておく
+resetToken = new URLSearchParams(location.search).get("reset") || "";
+
+initAccount();
+
+// URL パラメータ ?code=7203 で直接表示 (ブックマーク用)
+const initCode = new URLSearchParams(location.search).get("code");
+if (initCode && /^[0-9][0-9A-Za-z]{3,4}$/.test(initCode.trim())) {
+  const c = initCode.trim().toUpperCase();
+  $("searchInput").value = c;
+  loadMargin(c);
+} else if (!USE_API) {
+  // API が無い環境では、保存済みの銘柄を最初から一覧表示しておく
+  loadSavedIndex().then((list) => {
+    if (list.length) showCandidates("保存済みの銘柄", list);
+  });
+}
+</script>
+</body>
+</html>
