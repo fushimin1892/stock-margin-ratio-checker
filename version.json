@@ -1,12 +1,12 @@
 {
   "code": {
-    "updatedAt": "2026-07-31T16:11:52+09:00",
-    "commit": "41d2e4c",
-    "subject": "更新日時を記録する仕組みを追加し、start.bat を削除"
+    "updatedAt": "2026-11-04T11:49:30+09:00",
+    "commit": "e645416",
+    "subject": "現在の株価表示、セキュリティ修正、週次データ更新を追加"
   },
   "data": {
-    "fetchedAt": "2026-07-31T16:54:05.913Z",
-    "latestMarginWeek": "2026/7/24",
+    "fetchedAt": "2026-11-04T02:52:45.299Z",
+    "latestMarginWeek": "2026/10/30",
     "stockCount": 21
   }
 }
