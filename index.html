@@ -526,6 +526,14 @@
     font-size: 12.5px; font-weight: 700; letter-spacing: .01em;
   }
 
+  /* ---- サイト更新日 ---- */
+  .siteupdated {
+    margin-top: 28px; text-align: center;
+    color: var(--muted); font-size: 11.5px;
+    font-variant-numeric: tabular-nums;
+  }
+  .siteupdated:empty { display: none; }
+
   /* ---- アカウント (上部バー右端) ---- */
   .account { display: none; align-items: center; gap: 6px; flex: none; }
   .account.ready { display: flex; }
@@ -881,6 +889,7 @@
     </footer>
   </section>
 
+  <p class="siteupdated" id="siteUpdated"></p>
 </main>
 
 <!-- ログイン / 新規登録 / パスワード再設定。中身は1つで、モードによって出し分ける -->
@@ -1928,6 +1937,17 @@ applyTheme(currentTheme());
 resetToken = new URLSearchParams(location.search).get("reset") || "";
 
 initAccount();
+
+// サイト更新日 (コードの最終更新)。取得できなければ何も出さない
+fetch("./version.json", { cache: "no-cache" })
+  .then((r) => (r.ok ? r.json() : null))
+  .then((v) => {
+    const d = new Date(v && v.code && v.code.updatedAt);
+    if (isNaN(d)) return;
+    $("siteUpdated").textContent =
+      "サイト更新日: " + d.toLocaleDateString("ja-JP", { timeZone: "Asia/Tokyo" });
+  })
+  .catch(() => {});
 
 // URL パラメータ ?code=7203 で直接表示 (ブックマーク用)
 const initCode = new URLSearchParams(location.search).get("code");
