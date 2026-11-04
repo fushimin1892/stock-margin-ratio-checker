@@ -8,6 +8,8 @@ module.exports = async (req, res) => {
   const url = new URL(req.url, "http://localhost");
   const q = (url.searchParams.get("q") || "").trim();
   if (!q) return sendJson(res, { error: "検索語を入力してください" }, 400);
+  // 検索語はキャッシュのキーにもなるので、長すぎるものは受け取らない
+  if (q.length > 50) return sendJson(res, { error: "検索語が長すぎます" }, 400);
 
   try {
     const data = await searchStocks(q);
@@ -15,6 +17,6 @@ module.exports = async (req, res) => {
     return sendJson(res, data, status);
   } catch (err) {
     console.error(err);
-    return sendJson(res, { error: "サーバー内部エラー: " + err.message }, 500);
+    return sendJson(res, { error: "サーバー内部エラーが発生しました" }, 500);
   }
 };

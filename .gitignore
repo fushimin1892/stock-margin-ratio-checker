@@ -1,0 +1,8 @@
+# パスワードや利用者情報が入るので絶対にコミットしない
+.env
+.env.*
+!.env.example
+.data/
+
+.vercel/
+node_modules/

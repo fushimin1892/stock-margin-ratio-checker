@@ -336,6 +336,39 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* ---- 現在の株価 ---- */
+  .quote {
+    display: none; flex-wrap: wrap; align-items: center; gap: 14px 32px;
+    background: var(--surface); border: 1px solid var(--line-solid);
+    border-radius: 12px; padding: 15px 17px; margin-bottom: 14px;
+    box-shadow: var(--shadow);
+  }
+  .quote-main { flex: 1 1 280px; min-width: 0; }
+  .quote-label {
+    font-size: 11px; color: var(--muted); font-weight: 700; letter-spacing: .06em;
+  }
+  .quote-line {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 8px; margin-top: 6px;
+  }
+  .quote-price {
+    font-size: 34px; font-weight: 700; letter-spacing: -.015em; line-height: 1.15;
+    font-variant-numeric: tabular-nums;
+  }
+  .quote-unit { font-size: 13px; font-weight: 600; color: var(--muted); margin-right: 6px; }
+  .quote-time {
+    margin-top: 7px; font-size: 11.5px; color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .quote-stats {
+    flex: 2 1 320px; display: grid; gap: 10px 14px; margin: 0;
+    grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+  }
+  .quote-stats dt { font-size: 11px; color: var(--muted); font-weight: 600; }
+  .quote-stats dd {
+    margin: 3px 0 0; font-size: 14px; font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
   /* ---- 決算予定 ---- */
   .earnings {
     display: none; align-items: center; gap: 10px; flex-wrap: wrap;
@@ -702,6 +735,27 @@
       <span class="sdate" id="rDate"></span>
     </div>
 
+    <div class="quote" id="quote">
+      <div class="quote-main">
+        <div class="quote-label" id="quoteLabel">現在の株価</div>
+        <div class="quote-line">
+          <span>
+            <span class="quote-price" id="quotePrice"></span><span class="quote-unit">円</span>
+          </span>
+          <span class="chip" id="quoteChg"></span>
+          <span class="chip" id="quotePct"></span>
+        </div>
+        <div class="quote-time" id="quoteTime"></div>
+      </div>
+      <dl class="quote-stats" id="quoteStats">
+        <div><dt>前日終値</dt><dd id="quotePrev"></dd></div>
+        <div><dt>始値</dt><dd id="quoteOpen"></dd></div>
+        <div><dt>高値</dt><dd id="quoteHigh"></dd></div>
+        <div><dt>安値</dt><dd id="quoteLow"></dd></div>
+        <div><dt>出来高</dt><dd id="quoteVol"></dd></div>
+      </dl>
+    </div>
+
     <div class="earnings" id="earnings">
       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="var(--muted)"
            stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
@@ -865,6 +919,8 @@ const TABLE_WEEKS = 26;          // 履歴テーブルに出す週数
 const CHART_WEEKS = 52;          // グラフに出す週数
 const RESIZE_DEBOUNCE_MS = 150;  // リサイズ後にグラフを描き直すまでの待ち
 const REQUEST_TIMEOUT_MS = 15000;
+const QUOTE_LIVE_MS = 60 * 1000;         // 株価の更新間隔 (値が動いている間)
+const QUOTE_IDLE_MS = 5 * 60 * 1000;     // 株価の更新間隔 (取引終了後・取得失敗時)
 
 // 検索を連続で実行したとき、遅れて返ってきた古い結果が新しい表示を
 // 上書きしないようにする世代番号。取得を始めるたびに繰り上げる。
@@ -961,7 +1017,7 @@ function showResult(data) {
   $("rName").textContent = data.name;
   $("rDate").textContent = latest.date + " 申込時点";
 
-  showRange(data);
+  startQuote(data);
   showEarnings(data.earnings);
 
   $("buyVal").textContent = fmt(latest.buy);
@@ -994,6 +1050,97 @@ function showResult(data) {
   recordSearch(data.code, data.name);
 }
 
+/* ---- 現在の株価 ----
+   信用残とは別に /api/quote から取り、画面を開いている間は自動で更新する。
+   API に届かないときは、信用残と一緒に保存された取得時点の値を明記して出す。 */
+let quoteCtx = null;   // 表示中の銘柄の状態 { data, seq, loaded, paused, timer }
+
+function quoteTimeLabel(q) {
+  const opt = { timeZone: "Asia/Tokyo", hour: "2-digit", minute: "2-digit" };
+  const d = new Date(q.time);
+  if (q.live) return `${d.toLocaleTimeString("ja-JP", opt)} 時点・取引時間中の値は遅れて配信されます`;
+  const date = d.toLocaleDateString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric" });
+  return `${date} ${d.toLocaleTimeString("ja-JP", opt)} 時点・取引終了`;
+}
+
+function renderQuote(q) {
+  $("quote").style.display = "flex";
+  $("quoteLabel").textContent = "現在の株価";
+  $("quotePrice").textContent = fmt(q.price);
+  $("quoteChg").style.display = "";
+  $("quotePct").style.display = "";
+  chip($("quoteChg"), q.change, " 円");
+  chip($("quotePct"), q.changePct, " %", 2);
+  $("quoteTime").textContent = quoteTimeLabel(q);
+  $("quoteStats").style.display = "";
+  $("quotePrev").textContent = fmt(q.previousClose);
+  $("quoteOpen").textContent = fmt(q.open);
+  $("quoteHigh").textContent = fmt(q.dayHigh);
+  $("quoteLow").textContent = fmt(q.dayLow);
+  $("quoteVol").textContent = fmt(q.volume);
+}
+
+// 現在値を取れないとき。いつの値かを必ず添える (現在値に見せかけない)
+function renderQuoteFallback(data, message) {
+  if (data.price == null) {
+    $("quote").style.display = "none";
+    return;
+  }
+  const at = savedAtLabel(data.savedAt);
+  $("quote").style.display = "flex";
+  $("quoteLabel").textContent = "取得時点の株価";
+  $("quotePrice").textContent = fmt(data.price);
+  $("quoteChg").style.display = "none";
+  $("quotePct").style.display = "none";
+  $("quoteTime").textContent = (at ? at + " 時点。" : "") + message;
+  $("quoteStats").style.display = "none";
+}
+
+function startQuote(data) {
+  if (quoteCtx) clearTimeout(quoteCtx.timer);
+  const ctx = { data, seq: requestSeq, loaded: false, paused: false, timer: null };
+  quoteCtx = ctx;
+  showRange(data, data.price, "取得時点の値");
+  renderQuoteFallback(
+    data,
+    USE_API ? "最新の株価を確認しています…" : "最新の株価は API に接続できるときに表示されます。"
+  );
+  if (USE_API) refreshQuote(ctx);
+}
+
+async function refreshQuote(ctx) {
+  let q = null;
+  try {
+    const j = await apiGet("/api/quote?code=" + encodeURIComponent(ctx.data.code));
+    if (!j.error) q = j;
+  } catch (e) {
+    // 取れなくても下で表示を保つ。次の更新でまた試す
+  }
+  if (ctx !== quoteCtx || isStale(ctx.seq)) return;   // 別の銘柄に移っていたら捨てる
+
+  if (q) {
+    ctx.loaded = true;
+    renderQuote(q);
+    showRange(ctx.data, q.price, "現在値");
+  } else if (!ctx.loaded) {
+    renderQuoteFallback(ctx.data, "最新の株価を取得できませんでした。しばらくして自動で再取得します。");
+  }
+
+  ctx.timer = setTimeout(() => {
+    if (ctx !== quoteCtx || isStale(ctx.seq)) return;
+    // 見えていないタブでは取りに行かない (取得元へのアクセスを減らす)
+    if (document.hidden) { ctx.paused = true; return; }
+    refreshQuote(ctx);
+  }, q && q.live ? QUOTE_LIVE_MS : QUOTE_IDLE_MS);
+}
+
+document.addEventListener("visibilitychange", () => {
+  const ctx = quoteCtx;
+  if (document.hidden || !ctx || !ctx.paused || isStale(ctx.seq)) return;
+  ctx.paused = false;
+  refreshQuote(ctx);
+});
+
 /* ---- 決算発表予定日 ---- */
 function showEarnings(e) {
   const box = $("earnings");
@@ -1022,7 +1169,7 @@ function showEarnings(e) {
 }
 
 /* ---- 株価レンジ (上場来 / 年初来の高値・安値) ---- */
-function fillRangeBlock(ids, hi, lo, now, rangeLabel) {
+function fillRangeBlock(ids, hi, lo, now, nowLabel, rangeLabel) {
   const block = $(ids.block);
   if (!hi || hi.value == null || !lo || lo.value == null) {
     block.style.display = "none";
@@ -1039,7 +1186,7 @@ function fillRangeBlock(ids, hi, lo, now, rangeLabel) {
     $(ids.bar).style.display = "";
     $(ids.marker).style.left = (pct * 100).toFixed(1) + "%";
     $(ids.now).innerHTML =
-      `現在値 <b>${fmt(now)}円</b> ＝ ${rangeLabel}レンジの下から <b>${Math.round(pct * 100)}%</b> の位置`;
+      `${nowLabel} <b>${fmt(now)}円</b> ＝ ${rangeLabel}レンジの下から <b>${Math.round(pct * 100)}%</b> の位置`;
   } else {
     $(ids.bar).style.display = "none";
     $(ids.now).textContent = "";
@@ -1062,9 +1209,7 @@ function fillValuesOnly(ids, hi, lo) {
   return true;
 }
 
-function showRange(data) {
-  const now = data.price;
-
+function showRange(data, now, nowLabel) {
   const atShown = fillValuesOnly(
     { block: "atBlock", highVal: "atHighVal", lowVal: "atLowVal",
       highDate: "atHighDate", lowDate: "atLowDate" },
@@ -1075,7 +1220,7 @@ function showRange(data) {
     { block: "yrBlock", highVal: "yearHighVal", lowVal: "yearLowVal",
       highDate: "yearHighDate", lowDate: "yearLowDate",
       bar: "rangeBar", marker: "rangeBarMarker", now: "rangeNow" },
-    data.yearHigh, data.yearLow, now, "年初来"
+    data.yearHigh, data.yearLow, now, nowLabel, "年初来"
   );
 
   $("rangeCard").style.display = atShown || yrShown ? "" : "none";

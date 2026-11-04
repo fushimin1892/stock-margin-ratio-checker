@@ -19,6 +19,6 @@ module.exports = async (req, res) => {
     return sendJson(res, data, status, data.stale ? 120 : null);
   } catch (err) {
     console.error(err);
-    return sendJson(res, { error: "サーバー内部エラー: " + err.message }, 500);
+    return sendJson(res, { error: "サーバー内部エラーが発生しました" }, 500);
   }
 };

@@ -21,6 +21,7 @@ const ROOT = __dirname;
 
 const routes = {
   "/api/margin": require("./api/margin"),
+  "/api/quote": require("./api/quote"),
   "/api/search": require("./api/search"),
   "/api/auth": require("./api/auth"),
 };
@@ -70,11 +71,12 @@ const server = http.createServer(async (req, res) => {
   } catch (err) {
     console.error(err);
     res.writeHead(500, { "Content-Type": "application/json; charset=utf-8" });
-    res.end(JSON.stringify({ error: "サーバー内部エラー: " + err.message }));
+    res.end(JSON.stringify({ error: "サーバー内部エラーが発生しました" }));
   }
 });
 
-server.listen(PORT, () => {
+// 開発用の機能があるので、同じネットワークの他の機器からは接続させない
+server.listen(PORT, "127.0.0.1", () => {
   const st = routes["/api/auth"].status();
   console.log("");
   console.log("  信用残ウォッチ を起動しました");

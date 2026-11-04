@@ -20,7 +20,11 @@ const store = require("../lib/store");
 const auth = require("../lib/auth");
 const { sendMail, isConfigured: mailConfigured } = require("../lib/mailer");
 
-const DEFAULT_SITE_URL = "http://localhost:3690/";
+// 本番かどうか。開発用の近道 (再設定リンクを画面に返す等) は本番では絶対に動かさない
+const IS_PRODUCTION = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+const DEFAULT_SITE_URL = IS_PRODUCTION
+  ? "https://fushimin1892.github.io/apps/stock-margin-ratio-checker/"
+  : "http://localhost:3690/";
 
 // 認証の応答は絶対にキャッシュさせない (CDN に他人の応答を配られると困る)
 function send(res, obj, status = 200) {
@@ -61,7 +65,8 @@ const clientIp = (req) =>
 // 「localhost からの開発」か「設定済みの公開URL」かの二択にする。
 function siteUrl(req) {
   const origin = req.headers.origin || "";
-  if (isLocalOrigin(origin)) return origin + "/";
+  // Origin は curl などで偽装できるので、本番では見ない
+  if (!IS_PRODUCTION && isLocalOrigin(origin)) return origin + "/";
   return (process.env.SITE_URL || DEFAULT_SITE_URL).replace(/\/*$/, "/");
 }
 
@@ -119,7 +124,12 @@ async function handleForgot(req, res, body) {
       subject: "【信用残ウォッチ】パスワード再設定のご案内",
       text: resetMailText(url, issued.expiresInMin),
     });
-    // メール未設定の開発中は、画面から続きを試せるようにリンクを返す
+    // メール未設定の開発中は、画面から続きを試せるようにリンクを返す。
+    // 本番で返すと、他人のアドレスを入力するだけでそのアカウントを乗っ取れてしまう。
+    if (!result.sent && IS_PRODUCTION) {
+      console.error("SMTP が未設定のため再設定メールを送信できません");
+      return send(res, { error: "メールを送信できませんでした" }, 502);
+    }
     if (!result.sent) {
       return send(res, {
         ...ok,
@@ -132,7 +142,7 @@ async function handleForgot(req, res, body) {
     // 送信できなかったことは隠さない。設定ミスに気付けないほうが困るため。
     // (この応答だけは登録済みのアドレスにしか返らないが、実害より実用を取る)
     console.error("再設定メールの送信に失敗しました:", e.message);
-    return send(res, { error: "メールを送信できませんでした: " + e.message }, 502);
+    return send(res, { error: "メールを送信できませんでした" }, 502);
   }
   return send(res, ok);
 }
@@ -204,7 +214,7 @@ module.exports = async (req, res) => {
     return send(res, { error: "不明な操作です" }, 400);
   } catch (err) {
     console.error(err);
-    return send(res, { error: "サーバー内部エラー: " + err.message }, 500);
+    return send(res, { error: "サーバー内部エラーが発生しました" }, 500);
   }
 };
 
