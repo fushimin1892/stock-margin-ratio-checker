@@ -21,8 +21,8 @@
 
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)">
-<meta name="theme-color" content="#f9f9f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0a0d14" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f4f0e6" media="(prefers-color-scheme: light)">
 
 <!-- 初回検索は API へ接続するので、その分の接続確立を先に済ませておく -->
 <link rel="preconnect" href="https://kabu-shinyo-checker.vercel.app" crossorigin>
@@ -68,99 +68,118 @@
 </script>
 <style>
   /* ---- 配色 ----
-     系列色は data-viz の検証済みカテゴリカル配色のスロット1〜3 (青/橙/アクア)。
-     増減の赤緑は国内慣習に合わせて「増加=赤・減少=緑」。色だけに頼らないよう
-     ▲▼ の記号を必ず添える。 */
+     深い紺の地に金色を1色だけ差す。系列色(青/橙/アクア)と増減色は意味を持つので
+     差し色と分ける。増減は国内慣習に合わせて「増加=赤・減少=緑」で、色だけに
+     頼らないよう ▲▼ を必ず添える。 */
   :root {
     color-scheme: light;
-    --plane:      #f9f9f7;   /* ページ地 */
-    --surface:    #fcfcfb;   /* カード面 */
-    --surface-2:  #f2f1ed;   /* 一段沈めた面 */
-    --text:       #0b0b0b;
-    --text-2:     #52514e;
-    /* 本文に使うため WCAG AA (4.5:1) を満たす濃さにしている。
-       #898781 はグラフ軸ラベル用の明度で、テキストだと 3.4:1 しか出ない。 */
-    --muted:      #6b6a64;
-    --grid:       #e1e0d9;
-    --axis:       #c3c2b7;
-    --line:       rgba(11, 11, 11, .10);
-    --line-solid: #e4e3dd;
-    --accent:     #2a78d6;
+    --plane:      #f4f0e6;   /* ページ地 */
+    --surface:    #fcfaf4;   /* カード面 */
+    --surface-2:  #efeadd;   /* 一段沈めた面 */
+    --text:       #17171a;
+    --text-2:     #4d4b45;
+    --muted:      #686459;
+    --grid:       #e2dccd;
+    --axis:       #c5bea9;
+    --line:       rgba(23, 23, 26, .11);
+    --line-solid: #e0d9c8;
+    --accent:     #8a6118;
     --accent-ink: #ffffff;
-    --accent-soft:#e8f0fc;
-    --accent-badge:#1c5cab;   /* accent-soft 上の文字用 (accent だと 3.9:1) */
-    --accent-strong:#256abf;  /* 白文字を載せる面用 (accent だと 4.4:1) */
-    --up-ink:     #c22f2f;    /* up-soft 上の文字用 (up だと 4.1:1) */
-    --down-ink:   #006300;
-    --up:         #d03b3b;   /* 増加 = 赤 (国内慣習) */
-    --up-soft:    #fbeaea;
-    --down:       #006300;   /* 減少 = 緑 */
-    --down-soft:  #e6f2e6;
+    --accent-soft:#f2e8d0;
+    --accent-badge:#70500f;
+    --accent-strong:#80590f;
+    --up-ink:     #bb2d2d;
+    --down-ink:   #006b3d;
+    --up:         #c7362f;
+    --up-soft:    #fae8e4;
+    --down:       #006b3d;
+    --down-soft:  #e0f1e6;
     --series-buy:   #2a78d6;
-    --series-sell:  #eb6834;
-    --series-price: #1baf7a;
-    --shadow: 0 1px 2px rgba(11,11,11,.04), 0 6px 20px rgba(11,11,11,.05);
+    --series-sell:  #d9592a;
+    --series-price: #149a6c;
+    --shadow: 0 1px 1px rgba(60,50,20,.05), 0 14px 34px rgba(60,50,20,.07);
+    --glass:      rgba(252, 250, 244, .66);
+    --glass-line: rgba(23, 23, 26, .10);
+    --glass-shine:rgba(255, 255, 255, .75);
+    --mesh-a:     rgba(201, 158, 74, .20);
+    --mesh-b:     rgba(42, 120, 214, .08);
+    --mesh-c:     rgba(20, 154, 108, .07);
     --card: var(--surface);   /* グラフ描画が参照 */
+    --radius: 16px;
+    --serif: "Yu Mincho", "YuMincho", "Hiragino Mincho ProN", "Noto Serif JP", "Times New Roman", serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
   }
   /* OS がダークで、明示的にライトを選んでいないとき */
   @media (prefers-color-scheme: dark) {
     :root:where([data-theme="auto"]) {
       color-scheme: dark;
-      --plane:      #0d0d0d;
-      --surface:    #1a1a19;
-      --surface-2:  #121211;
-      --text:       #ffffff;
-      --text-2:     #c3c2b7;
-      --muted:      #898781;
-      --grid:       #2c2c2a;
-      --axis:       #383835;
-      --line:       rgba(255, 255, 255, .10);
-      --line-solid: #2c2c2a;
-      --accent:     #3987e5;
-      --accent-ink: #06111f;
-      --accent-soft:#16283f;
-      --accent-badge:#6da7ec;
-      --accent-strong:#3987e5;
-      --up-ink:     #e66767;
-      --down-ink:   #0ca30c;
-      --up:         #e66767;
-      --up-soft:    #33201f;
-      --down:       #0ca30c;
-      --down-soft:  #14290f;
-      --series-buy:   #3987e5;
-      --series-sell:  #d95926;
-      --series-price: #199e70;
-      --shadow: 0 1px 2px rgba(0,0,0,.5), 0 8px 28px rgba(0,0,0,.35);
+      --plane:      #0a0d14;
+      --surface:    #131823;
+      --surface-2:  #0e121b;
+      --text:       #f4f1e8;
+      --text-2:     #c6c5bd;
+      --muted:      #99a0ad;
+      --grid:       #262c39;
+      --axis:       #3a4150;
+      --line:       rgba(244, 241, 232, .10);
+      --line-solid: #262c39;
+      --accent:     #d9b26a;
+      --accent-ink: #15110a;
+      --accent-soft:#2a2418;
+      --accent-badge:#e3c283;
+      --accent-strong:#d9b26a;
+      --up-ink:     #f07d78;
+      --down-ink:   #4cc38a;
+      --up:         #f07d78;
+      --up-soft:    #351d20;
+      --down:       #4cc38a;
+      --down-soft:  #12291f;
+      --series-buy:   #5b9bea;
+      --series-sell:  #e2703a;
+      --series-price: #3cbf94;
+      --shadow: 0 1px 1px rgba(0,0,0,.3), 0 14px 36px rgba(0,0,0,.28);
+      --glass:      rgba(25, 31, 44, .62);
+      --glass-line: rgba(244, 241, 232, .14);
+      --glass-shine:rgba(255, 255, 255, .10);
+      --mesh-a:     rgba(217, 178, 106, .13);
+      --mesh-b:     rgba(91, 155, 234, .12);
+      --mesh-c:     rgba(60, 191, 148, .06);
     }
   }
   /* 明示的にダークを選んだとき (OS 設定より優先) */
   :root[data-theme="dark"] {
     color-scheme: dark;
-    --plane:      #0d0d0d;
-    --surface:    #1a1a19;
-    --surface-2:  #121211;
-    --text:       #ffffff;
-    --text-2:     #c3c2b7;
-    --muted:      #898781;
-    --grid:       #2c2c2a;
-    --axis:       #383835;
-    --line:       rgba(255, 255, 255, .10);
-    --line-solid: #2c2c2a;
-    --accent:     #3987e5;
-    --accent-ink: #06111f;
-    --accent-soft:#16283f;
-    --accent-badge:#6da7ec;
-    --accent-strong:#3987e5;
-    --up-ink:     #e66767;
-    --down-ink:   #0ca30c;
-    --up:         #e66767;
-    --up-soft:    #33201f;
-    --down:       #0ca30c;
-    --down-soft:  #14290f;
-    --series-buy:   #3987e5;
-    --series-sell:  #d95926;
-    --series-price: #199e70;
-    --shadow: 0 1px 2px rgba(0,0,0,.5), 0 8px 28px rgba(0,0,0,.35);
+    --plane:      #0a0d14;
+    --surface:    #131823;
+    --surface-2:  #0e121b;
+    --text:       #f4f1e8;
+    --text-2:     #c6c5bd;
+    --muted:      #99a0ad;
+    --grid:       #262c39;
+    --axis:       #3a4150;
+    --line:       rgba(244, 241, 232, .10);
+    --line-solid: #262c39;
+    --accent:     #d9b26a;
+    --accent-ink: #15110a;
+    --accent-soft:#2a2418;
+    --accent-badge:#e3c283;
+    --accent-strong:#d9b26a;
+    --up-ink:     #f07d78;
+    --down-ink:   #4cc38a;
+    --up:         #f07d78;
+    --up-soft:    #351d20;
+    --down:       #4cc38a;
+    --down-soft:  #12291f;
+    --series-buy:   #5b9bea;
+    --series-sell:  #e2703a;
+    --series-price: #3cbf94;
+    --shadow: 0 1px 1px rgba(0,0,0,.3), 0 14px 36px rgba(0,0,0,.28);
+    --glass:      rgba(25, 31, 44, .62);
+    --glass-line: rgba(244, 241, 232, .14);
+    --glass-shine:rgba(255, 255, 255, .10);
+    --mesh-a:     rgba(217, 178, 106, .13);
+    --mesh-b:     rgba(91, 155, 234, .12);
+    --mesh-c:     rgba(60, 191, 148, .06);
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -173,6 +192,14 @@
     line-height: 1.6;
     min-height: 100vh;
     font-feature-settings: "palt" 1;
+  }
+  /* 背景の淡い光。文字の下で邪魔をしないよう、彩度を抑えて固定する */
+  body::before {
+    content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background:
+      radial-gradient(52vw 42vw at 84% -6%, var(--mesh-a), transparent 70%),
+      radial-gradient(46vw 38vw at 4% 16%, var(--mesh-b), transparent 70%),
+      radial-gradient(60vw 42vw at 54% 108%, var(--mesh-c), transparent 70%);
   }
   a { color: var(--accent-strong); }
 
@@ -200,34 +227,40 @@
     }
   }
 
-  /* ---- 上部バー ---- */
+  /* ---- 上部バー (浮いたガラス) ---- */
   .topbar {
-    position: sticky; top: 0; z-index: 20;
+    position: sticky; top: 12px; z-index: 20;
     display: flex; align-items: center; gap: 12px;
-    padding: 10px 16px;
-    /* 不透明の地色を先に置く。color-mix / backdrop-filter 非対応でも
-       背景が透けて文字が読めなくなることがない (Safari 16.1 以前など)。 */
-    background: var(--plane);
-    border-bottom: 1px solid var(--line);
+    width: min(1040px, calc(100% - 24px)); margin: 12px auto 0;
+    padding: 8px 10px 8px 16px;
+    border-radius: 999px;
+    /* 不透明の地色を先に置く。backdrop-filter 非対応でも文字が読める */
+    background: var(--surface);
+    border: 1px solid var(--glass-line);
+    box-shadow: var(--shadow);
   }
-  @supports (background: color-mix(in srgb, red 50%, transparent)) and
-            ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     .topbar {
-      background: color-mix(in srgb, var(--plane) 88%, transparent);
-      -webkit-backdrop-filter: saturate(160%) blur(10px);
-      backdrop-filter: saturate(160%) blur(10px);
+      background: var(--glass);
+      -webkit-backdrop-filter: saturate(150%) blur(18px);
+      backdrop-filter: saturate(150%) blur(18px);
+      box-shadow: var(--shadow), inset 0 1px 0 var(--glass-shine);
     }
   }
-  .brand { display: flex; align-items: baseline; gap: 9px; min-width: 0; }
-  .brand .mark { flex: none; align-self: center; display: block; }
+  .brand {
+    display: flex; align-items: center; gap: 9px; min-width: 0;
+    color: inherit; text-decoration: none;
+  }
+  .brand .mark { flex: none; display: block; }
   .brand .bname {
-    font-size: 16px; font-weight: 700; letter-spacing: .02em; white-space: nowrap;
+    font-family: var(--serif); font-size: 17px; font-weight: 700;
+    letter-spacing: .03em; white-space: nowrap;
   }
   .brand .bsub {
-    font-size: 11px; color: var(--muted); letter-spacing: .08em;
+    font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: .1em;
     text-transform: uppercase; white-space: nowrap;
   }
-  @media (max-width: 560px) { .brand .bsub { display: none; } }
+  @media (max-width: 720px) { .brand .bsub { display: none; } }
 
   .themetoggle {
     margin-left: auto; display: flex; gap: 2px; flex: none;
@@ -249,35 +282,145 @@
   }
   .themetoggle svg { display: block; }
 
-  .wrap { max-width: 940px; margin: 0 auto; padding: 22px 16px 72px; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px 40px; }
 
-  /* ---- 導入 ---- */
-  .lede { text-align: center; margin-bottom: 18px; }
-  .lede h1 { font-size: 21px; font-weight: 700; letter-spacing: .01em; }
-  .lede p { color: var(--muted); font-size: 13px; margin-top: 3px; }
+  /* ---- ヒーロー ---- */
+  .hero {
+    display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, .75fr);
+    align-items: center; gap: 24px;
+    padding: 64px 0 40px;
+  }
+  .eyebrow {
+    font-family: var(--mono); font-size: 11px; font-weight: 600;
+    letter-spacing: .16em; color: var(--accent-badge); text-transform: uppercase;
+  }
+  .hero h1 {
+    font-family: var(--serif); font-weight: 700;
+    font-size: clamp(36px, 6vw, 62px); line-height: 1.22; letter-spacing: .01em;
+    margin-top: 14px; text-wrap: balance;
+  }
+  .hero .herolead,
+  .feature p,
+  .footnote { word-break: auto-phrase; }   /* 非対応のブラウザでは通常の改行になる */
+  .hero .herolead { color: var(--text-2); font-size: 15px; margin-top: 16px; max-width: 34em; }
+
+  /* 立体のグラフ。買い残・売り残・株価の3系列を表すロゴと同じ形 */
+  .prisms {
+    height: 300px; display: flex; align-items: center; justify-content: center;
+    perspective: 1000px;
+  }
+  .prism-stage {
+    display: flex; align-items: flex-end; gap: 34px; height: 230px;
+    transform-style: preserve-3d;
+    transform: rotateX(-16deg) rotateY(-34deg);
+  }
+  @supports (animation-timeline: scroll()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .prism-stage { animation: prism-turn linear both; animation-timeline: scroll(root); animation-range: 0 500px; }
+      @keyframes prism-turn { to { transform: rotateX(-24deg) rotateY(-10deg) translateY(-18px); } }
+    }
+  }
+  .prism {
+    --c: var(--series-buy);
+    position: relative; width: 54px; height: var(--h);
+    transform-style: preserve-3d;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--c) 92%, #fff), color-mix(in srgb, var(--c) 62%, transparent));
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.14);
+  }
+  .prism::before {   /* 右の面 */
+    content: ""; position: absolute; top: 0; left: 100%; width: 54px; height: 100%;
+    transform-origin: left center; transform: rotateY(90deg);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--c) 58%, #000), color-mix(in srgb, var(--c) 30%, transparent));
+  }
+  .prism::after {    /* 上の面 */
+    content: ""; position: absolute; bottom: 100%; left: 0; width: 54px; height: 54px;
+    transform-origin: center bottom; transform: rotateX(90deg);
+    background: color-mix(in srgb, var(--c) 72%, #fff);
+  }
+  .prism.sell  { --c: var(--series-sell); }
+  .prism.price { --c: var(--series-price); }
 
   /* ---- 検索 ---- */
   .searchbox {
-    display: flex; gap: 8px;
+    display: flex; gap: 8px; margin-top: 26px; max-width: 620px;
     background: var(--surface);
-    border: 1px solid var(--line-solid);
-    border-radius: 12px; padding: 8px;
+    border: 1px solid var(--glass-line);
+    border-radius: 999px; padding: 7px;
     box-shadow: var(--shadow);
+  }
+  @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .searchbox {
+      background: var(--glass);
+      -webkit-backdrop-filter: saturate(150%) blur(18px);
+      backdrop-filter: saturate(150%) blur(18px);
+      box-shadow: var(--shadow), inset 0 1px 0 var(--glass-shine);
+    }
   }
   .searchbox:focus-within { border-color: var(--accent); }
   .searchbox input {
     flex: 1; min-width: 0;
     border: none; outline: none; background: transparent;
-    color: var(--text); font: inherit; font-size: 16px; padding: 8px 10px;
+    color: var(--text); font: inherit; font-size: 16px; padding: 8px 8px 8px 18px;
   }
   .searchbox input::placeholder { color: var(--muted); }
   .searchbox button {
     border: none; background: var(--accent-strong); color: var(--accent-ink);
     font: inherit; font-size: 14px; font-weight: 700;
-    padding: 9px 20px; border-radius: 9px; cursor: pointer;
+    padding: 10px 26px; border-radius: 999px; cursor: pointer;
+    transition: filter .15s ease, transform .15s ease;
   }
-  .searchbox button:hover { filter: brightness(1.08); }
-  .hint { color: var(--muted); font-size: 12px; margin: 8px 4px 0; }
+  .searchbox button:hover { filter: brightness(1.08); transform: translateY(-1px); }
+  .hint { color: var(--muted); font-size: 12px; margin: 10px 4px 0; }
+
+  /* 例の銘柄。押すとそのまま開く */
+  .quickpicks { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 18px; }
+  .quicklabel { font-size: 11.5px; font-weight: 600; color: var(--muted); margin-right: 3px; }
+  .quickpicks button {
+    appearance: none; font: inherit; font-size: 12.5px; font-weight: 600;
+    color: var(--text-2); background: transparent; cursor: pointer;
+    border: 1px solid var(--line); border-radius: 999px;
+    padding: 5px 12px; min-height: 32px;
+    transition: border-color .15s ease, color .15s ease, background .15s ease;
+  }
+  .quickpicks button:hover { border-color: var(--accent); color: var(--text); background: var(--accent-soft); }
+
+  /* 読めることの紹介。銘柄を開くと消える */
+  .features {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px;
+    margin: 20px 0 8px;
+  }
+  .feature {
+    background: var(--surface); border: 1px solid var(--line-solid);
+    border-radius: var(--radius); padding: 22px; box-shadow: var(--shadow);
+  }
+  .feature .fnum { font-family: var(--mono); font-size: 11px; color: var(--accent-badge); letter-spacing: .1em; }
+  .feature h2 { font-family: var(--serif); font-size: 20px; font-weight: 700; margin-top: 10px; }
+  .feature p { color: var(--text-2); font-size: 13px; margin-top: 7px; line-height: 1.7; }
+
+  /* 検索を始めたら、ヒーローを畳んで結果を主役にする */
+  .is-active .hero { display: block; padding: 28px 0 0; }
+  .is-active .hero .eyebrow,
+  .is-active .hero h1,
+  .is-active .hero .herolead,
+  .is-active .prisms,
+  .is-active .quickpicks,
+  .is-active .features { display: none; }
+  .is-active .searchbox { margin-top: 0; max-width: none; }
+
+  @media (max-width: 760px) {
+    .hero { grid-template-columns: minmax(0, 1fr); padding: 40px 0 26px; gap: 8px; }
+    .prisms { display: none; }
+    .features { grid-template-columns: minmax(0, 1fr); }
+    .searchbox button { padding: 10px 18px; }
+    .searchbox input { padding-left: 12px; }
+  }
+
+  /* スクロールで順に現れる。JS が .reveal を付けるので、JS 無しでも内容は見える */
+  .reveal {
+    opacity: 0; transform: translateY(14px);
+    transition: opacity .55s ease var(--d, 0ms), transform .55s cubic-bezier(.2,.7,.2,1) var(--d, 0ms);
+  }
+  .reveal.in { opacity: 1; transform: none; }
 
   /* ---- 状態表示 ---- */
   .status { margin: 22px 0; text-align: center; color: var(--text-2); font-size: 14px; }
@@ -325,12 +468,12 @@
     border-bottom: 1px solid var(--line);
   }
   .stockhead .scode {
-    font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 700;
+    font-family: var(--mono); font-size: 13px; font-weight: 700;
     letter-spacing: .06em;
     color: var(--accent-badge); background: var(--accent-soft);
     border-radius: 6px; padding: 3px 10px;
   }
-  .stockhead .sname { font-size: 22px; font-weight: 700; letter-spacing: .01em; }
+  .stockhead .sname { font-family: var(--serif); font-size: 30px; font-weight: 700; letter-spacing: .01em; line-height: 1.3; }
   .stockhead .sdate {
     margin-left: auto; color: var(--muted); font-size: 12px;
     font-variant-numeric: tabular-nums;
@@ -340,8 +483,17 @@
   .quote {
     display: none; flex-wrap: wrap; align-items: center; gap: 14px 32px;
     background: var(--surface); border: 1px solid var(--line-solid);
-    border-radius: 12px; padding: 15px 17px; margin-bottom: 14px;
+    border-radius: var(--radius); padding: 22px 24px; margin-bottom: 14px;
     box-shadow: var(--shadow);
+  }
+  @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .quote {
+      background: var(--glass);
+      -webkit-backdrop-filter: saturate(150%) blur(18px);
+      backdrop-filter: saturate(150%) blur(18px);
+      border-color: var(--glass-line);
+      box-shadow: var(--shadow), inset 0 1px 0 var(--glass-shine);
+    }
   }
   .quote-main { flex: 1 1 280px; min-width: 0; }
   .quote-label {
@@ -351,7 +503,7 @@
     display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 8px; margin-top: 6px;
   }
   .quote-price {
-    font-size: 34px; font-weight: 700; letter-spacing: -.015em; line-height: 1.15;
+    font-size: clamp(40px, 7vw, 56px); font-weight: 700; letter-spacing: -.015em; line-height: 1.15;
     font-variant-numeric: tabular-nums;
   }
   .quote-unit { font-size: 13px; font-weight: 600; color: var(--muted); margin-right: 6px; }
@@ -373,7 +525,7 @@
   .earnings {
     display: none; align-items: center; gap: 10px; flex-wrap: wrap;
     background: var(--surface); border: 1px solid var(--line-solid);
-    border-radius: 12px; padding: 10px 15px; margin-bottom: 14px;
+    border-radius: var(--radius); padding: 10px 15px; margin-bottom: 14px;
   }
   .earnings-label {
     font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: .06em;
@@ -394,7 +546,7 @@
   }
   .tile {
     background: var(--surface); border: 1px solid var(--line-solid);
-    border-radius: 12px; padding: 15px 17px; box-shadow: var(--shadow);
+    border-radius: var(--radius); padding: 20px 22px; box-shadow: var(--shadow);
   }
   .tile .label {
     font-size: 11px; color: var(--muted); font-weight: 700; letter-spacing: .06em;
@@ -424,7 +576,7 @@
   /* ---- 株価レンジ ---- */
   .rangecard {
     background: var(--surface); border: 1px solid var(--line-solid);
-    border-radius: 12px; padding: 15px 17px; box-shadow: var(--shadow);
+    border-radius: var(--radius); padding: 20px 22px; box-shadow: var(--shadow);
     margin-bottom: 12px;
   }
   .rangecard > .label {
@@ -460,14 +612,14 @@
   .range-now b { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
 
   /* ---- グラフ ---- */
-  .chart-section { margin-top: 22px; }
+  .chart-section { margin-top: 36px; }
   .sec-title {
-    font-size: 14px; font-weight: 700; margin-bottom: 5px; letter-spacing: .01em;
+    font-family: var(--serif); font-size: 21px; font-weight: 700; margin-bottom: 6px; letter-spacing: .01em;
   }
   .chart-note { font-size: 11.5px; color: var(--muted); margin-bottom: 10px; line-height: 1.55; }
   .chart-card {
     background: var(--surface); border: 1px solid var(--line-solid);
-    border-radius: 12px; box-shadow: var(--shadow);
+    border-radius: var(--radius); box-shadow: var(--shadow);
     padding: 14px 16px 8px; position: relative;
   }
   #chartHost svg { display: block; width: 100%; height: auto; }
@@ -486,10 +638,10 @@
   }
 
   /* ---- 履歴テーブル ---- */
-  .history { margin-top: 22px; }
+  .history { margin-top: 36px; }
   .tablewrap {
     overflow-x: auto; background: var(--surface);
-    border: 1px solid var(--line-solid); border-radius: 12px; box-shadow: var(--shadow);
+    border: 1px solid var(--line-solid); border-radius: var(--radius); box-shadow: var(--shadow);
   }
   table {
     border-collapse: collapse; width: 100%; min-width: 660px;
@@ -514,7 +666,7 @@
   /* ---- 免責 ---- */
   .disclaimer {
     display: flex; align-items: flex-start; gap: 10px;
-    margin-top: 22px; padding: 12px 15px;
+    margin-top: 28px; padding: 12px 15px;
     background: var(--surface-2);
     border: 1px solid var(--line);
     border-radius: 10px;
@@ -526,10 +678,28 @@
     font-size: 12.5px; font-weight: 700; letter-spacing: .01em;
   }
 
-  /* ---- サイト更新日 ---- */
+  /* ---- フッター ---- */
+  .sitefoot {
+    max-width: 1040px; margin: 40px auto 0; padding: 30px 16px 26px;
+    border-top: 1px solid var(--line);
+    overflow: hidden;
+  }
+  .footgrid { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 22px 48px; }
+  .footnote { max-width: 34em; color: var(--muted); font-size: 12px; line-height: 1.8; }
+  .footlinks h2 {
+    font-family: var(--mono); font-size: 10.5px; font-weight: 600; letter-spacing: .12em;
+    color: var(--muted); text-transform: uppercase; margin-bottom: 8px;
+  }
+  .footlinks ul { list-style: none; display: grid; gap: 5px; }
+  .footlinks a { color: var(--text-2); font-size: 13px; text-underline-offset: 3px; }
+  .footlinks a:hover { color: var(--accent-badge); }
+  .wordmark {
+    font-family: var(--serif); font-weight: 700; line-height: 1.1; letter-spacing: .02em;
+    font-size: clamp(44px, 13.2vw, 136px); white-space: nowrap;
+    margin-top: 26px; color: var(--grid); user-select: none;
+  }
   .siteupdated {
-    margin-top: 28px; text-align: center;
-    color: var(--muted); font-size: 11.5px;
+    margin-top: 16px; color: var(--muted); font-size: 11.5px;
     font-variant-numeric: tabular-nums;
   }
   .siteupdated:empty { display: none; }
@@ -558,7 +728,7 @@
   @media (max-width: 720px) { .acctmail { display: none; } }
   /* さらに狭いと1行に収まらないので、アカウント欄だけ下の段へ回す */
   @media (max-width: 620px) {
-    .topbar { flex-wrap: wrap; row-gap: 8px; }
+    .topbar { flex-wrap: wrap; row-gap: 8px; border-radius: 22px; }
     .account { width: 100%; justify-content: flex-end; }
   }
   @media (max-width: 420px) {
@@ -667,7 +837,7 @@
 <body>
 
 <header class="topbar">
-  <div class="brand">
+  <a class="brand" href="./" aria-label="信用残ウォッチ トップへ">
     <svg class="mark" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
       <rect x="1"  y="9"  width="3.4" height="8"  rx="1.2" fill="var(--series-buy)"/>
       <rect x="7.3" y="4" width="3.4" height="13" rx="1.2" fill="var(--series-sell)"/>
@@ -676,7 +846,7 @@
     <span class="bname">信用残ウォッチ</span>
     <!-- 英字は読み上げを英語にする (日本語音声で綴り読みされるのを防ぐ) -->
     <span class="bsub" lang="en">Margin Balance Watch</span>
-  </div>
+  </a>
   <div class="themetoggle" id="themeToggle" role="group" aria-label="表示テーマ">
     <button type="button" data-set-theme="auto" title="OS の設定に合わせる">自動</button>
     <button type="button" data-set-theme="light" title="ライトテーマ">
@@ -705,19 +875,54 @@
 
 <main class="wrap">
 
-  <div class="lede">
-    <h1>信用買い残・売り残・信用倍率をひと目で</h1>
-    <p>銘柄コードか銘柄名を入れると、前週比・推移グラフ・週次履歴まで表示します</p>
+  <div class="hero">
+    <div>
+      <p class="eyebrow" lang="en">Margin Balance Watch</p>
+      <h1>信用の偏りを、<br>ひと目で。</h1>
+      <p class="herolead">銘柄コードか銘柄名を入れると、信用買い残・売り残・信用倍率を、前週比と推移グラフ、週次履歴までまとめて表示します。</p>
+      <form class="searchbox" id="searchForm" role="search">
+        <label class="visually-hidden" for="searchInput">銘柄コードまたは銘柄名</label>
+        <input id="searchInput" type="search" name="q" enterkeyhint="search"
+               placeholder="銘柄コードか銘柄名 (例: 7203)"
+               autocomplete="off" autocapitalize="off" spellcheck="false" autofocus>
+        <button type="submit">検索</button>
+      </form>
+      <div class="quickpicks" id="quickPicks">
+        <span class="quicklabel">例</span>
+        <button type="button" data-code="7203">トヨタ自動車</button>
+        <button type="button" data-code="6758">ソニーグループ</button>
+        <button type="button" data-code="8306">三菱UFJ</button>
+        <button type="button" data-code="7974">任天堂</button>
+        <button type="button" data-code="285A">キオクシア</button>
+      </div>
+      <p class="hint" id="searchHint">※ 信用残データは東証発表にもとづく週1回(毎週第2営業日ごろ)の更新です</p>
+    </div>
+    <div class="prisms" aria-hidden="true">
+      <div class="prism-stage">
+        <div class="prism" style="--h:112px"></div>
+        <div class="prism sell" style="--h:164px"></div>
+        <div class="prism price" style="--h:216px"></div>
+      </div>
+    </div>
   </div>
 
-  <form class="searchbox" id="searchForm" role="search">
-    <label class="visually-hidden" for="searchInput">銘柄コードまたは銘柄名</label>
-    <input id="searchInput" type="search" name="q" enterkeyhint="search"
-           placeholder="銘柄コード または 銘柄名 (例: 7203 / トヨタ)"
-           autocomplete="off" autocapitalize="off" spellcheck="false" autofocus>
-    <button type="submit">検索</button>
-  </form>
-  <p class="hint" id="searchHint">※ 信用残データは東証発表にもとづく週1回(毎週第2営業日ごろ)の更新です</p>
+  <section class="features" aria-label="表示できる内容">
+    <article class="feature">
+      <p class="fnum" lang="en">01</p>
+      <h2>信用倍率</h2>
+      <p>買い残を売り残で割った倍率と前週差を確認できます。</p>
+    </article>
+    <article class="feature">
+      <p class="fnum" lang="en">02</p>
+      <h2>週ごとの変化</h2>
+      <p>買い残・売り残の増減を、株数と割合の両方で確認できます。</p>
+    </article>
+    <article class="feature">
+      <p class="fnum" lang="en">03</p>
+      <h2>株価との推移</h2>
+      <p>信用残と株価の動きを、同じ週の並びでグラフと表で比べられます。</p>
+    </article>
+  </section>
 
   <!-- 検索履歴 (ログイン中のみ)。表示した銘柄をアカウントに保存して呼び出せる -->
   <section class="histpanel" id="histPanel">
@@ -889,8 +1094,25 @@
     </footer>
   </section>
 
-  <p class="siteupdated" id="siteUpdated"></p>
 </main>
+
+<footer class="sitefoot">
+  <div class="footgrid">
+    <p class="footnote">
+      信用残ウォッチは情報の確認を目的としたサイトで、投資助言ではありません。投資判断はご自身の責任でお願いします。
+      表示内容は取得時点のもので、正確性・完全性を保証するものではありません。
+    </p>
+    <nav class="footlinks" aria-label="データの取得元">
+      <h2>データ取得元</h2>
+      <ul>
+        <li><a href="https://finance.yahoo.co.jp/" target="_blank" rel="noopener noreferrer">Yahoo!ファイナンス</a></li>
+        <li><a href="https://www.sbisec.co.jp/" target="_blank" rel="noopener noreferrer">SBI証券</a></li>
+      </ul>
+    </nav>
+  </div>
+  <p class="wordmark" aria-hidden="true">信用残ウォッチ</p>
+  <p class="siteupdated" id="siteUpdated"></p>
+</footer>
 
 <!-- ログイン / 新規登録 / パスワード再設定。中身は1つで、モードによって出し分ける -->
 <dialog class="modal" id="authModal" aria-labelledby="authTitle">
@@ -934,7 +1156,10 @@ const QUOTE_IDLE_MS = 5 * 60 * 1000;     // 株価の更新間隔 (取引終了�
 // 検索を連続で実行したとき、遅れて返ってきた古い結果が新しい表示を
 // 上書きしないようにする世代番号。取得を始めるたびに繰り上げる。
 let requestSeq = 0;
-const startRequest = () => ++requestSeq;
+const startRequest = () => {
+  document.body.classList.add("is-active");   // 検索を始めたらヒーローを畳む
+  return ++requestSeq;
+};
 const isStale = (seq) => seq !== requestSeq;
 
 // innerHTML に入れる動的な文字列はここを通す。
@@ -1054,6 +1279,7 @@ function showResult(data) {
 
   $("result").style.display = "block";
   renderChart(data.rows.slice(0, CHART_WEEKS));
+  armReveal($("result"));
 
   // ログイン中なら、見た銘柄をアカウントの検索履歴に残す
   recordSearch(data.code, data.name);
@@ -1430,6 +1656,29 @@ window.addEventListener("resize", () => {
 window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
   if (chartRows && currentTheme() === "auto") renderChart(chartRows);
 });
+
+/* ---- スクロールで順に表示 ---- */
+const REVEAL_TARGETS = ".quote, .earnings, .tile, .rangecard, .chart-section, .history, .disclaimer, .feature";
+const revealObserver =
+  "IntersectionObserver" in window && !matchMedia("(prefers-reduced-motion: reduce)").matches
+    ? new IntersectionObserver((entries, obs) => {
+        for (const e of entries) {
+          if (!e.isIntersecting) continue;
+          e.target.classList.add("in");
+          obs.unobserve(e.target);
+        }
+      }, { rootMargin: "0px 0px -6% 0px" })
+    : null;
+
+function armReveal(root) {
+  if (!revealObserver) return;
+  root.querySelectorAll(REVEAL_TARGETS).forEach((el, i) => {
+    el.classList.remove("in");
+    el.classList.add("reveal");
+    el.style.setProperty("--d", Math.min(i, 5) * 60 + "ms");
+    revealObserver.observe(el);
+  });
+}
 
 /* ---- データ取得元の決定 ----
    1. localhost で server.js が動いている        → 同一オリジンの /api/...
@@ -1937,6 +2186,15 @@ applyTheme(currentTheme());
 resetToken = new URLSearchParams(location.search).get("reset") || "";
 
 initAccount();
+
+$("quickPicks").addEventListener("click", (ev) => {
+  const btn = ev.target.closest("button[data-code]");
+  if (!btn) return;
+  $("searchInput").value = btn.dataset.code;
+  loadMargin(btn.dataset.code);
+});
+
+armReveal(document.querySelector(".features"));
 
 // サイト更新日 (コードの最終更新)。取得できなければ何も出さない
 fetch("./version.json", { cache: "no-cache" })
