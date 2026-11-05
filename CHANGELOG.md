@@ -13,6 +13,9 @@
 
 ## 2026-11-05
 
+### ファイルの整理
+- アイコン類を `icons/`、`config.js` を `js/` へまとめた。機能の変更はなし
+
 ### 公開先の変更
 - 公開先をこのリポジトリ単独の GitHub Pages に変更した (https://fushimin1892.github.io/stock-margin-ratio-checker/)
 - 週次更新から別リポジトリへの反映処理を削除した
