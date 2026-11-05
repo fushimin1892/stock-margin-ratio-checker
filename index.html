@@ -1769,7 +1769,7 @@ async function loadMargin(code) {
         showResult(data);
         return;
       }
-      apiError = data.error;
+      apiError = esc(data.error);   // API 由来の文字列も innerHTML に入るためエスケープする
     } catch (e) {
       if (isStale(seq)) return;
       apiError = requestErrorMessage(e);
@@ -1847,7 +1847,7 @@ async function searchByName(q) {
         showCandidates("検索結果 — 銘柄を選択してください", data.results);
         return;
       }
-      apiError = data.error;
+      apiError = esc(data.error);   // API 由来の文字列も innerHTML に入るためエスケープする
     } catch (e) {
       if (isStale(seq)) return;
       apiError = requestErrorMessage(e);

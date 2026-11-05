@@ -7,11 +7,16 @@
 | 種別 | 最終更新の確認方法 |
 |---|---|
 | コード | このファイルの最上段、または `version.json` の `code.updatedAt` |
-| データ | `version.json` の `data.updatedAt` と `latestMarginWeek` |
+| データ | `version.json` の `data.fetchedAt` と `latestMarginWeek` |
 
 ---
 
 ## 2026-11-05
+
+### 月次点検での修正
+- API が返すエラー文を画面に出す前にエスケープするようにした (検索・信用残の取得失敗時)。これまでは API の応答をそのまま HTML として表示していた
+- 週次更新の `actions/checkout` と `actions/setup-node` を v5 に更新した (Node.js 20 の非推奨警告への対応)
+- この表のデータ欄の項目名を実際の `data.fetchedAt` に合わせた
 
 ### ファイルの整理
 - アイコン類を `icons/`、`config.js` を `js/` へまとめた。機能の変更はなし
