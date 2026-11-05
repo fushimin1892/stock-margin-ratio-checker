@@ -13,6 +13,11 @@
 
 ## 2026-11-05
 
+### 公開先の変更
+- 公開先をこのリポジトリ単独の GitHub Pages に変更した (https://fushimin1892.github.io/stock-margin-ratio-checker/)
+- 週次更新から別リポジトリへの反映処理を削除した
+- リポジトリの公開に合わせて、月次報告 `reports/YYYY-MM.md` を git の対象外にした
+
 ### 月次報告の保存
 - 月次更新の報告書を `reports/YYYY-MM.md` に保存するようにした。報告書の追加ではサイト更新日を変えず、Vercel のデプロイにも含めない
 

@@ -23,7 +23,7 @@ const { sendMail, isConfigured: mailConfigured } = require("../lib/mailer");
 // 本番かどうか。開発用の近道 (再設定リンクを画面に返す等) は本番では絶対に動かさない
 const IS_PRODUCTION = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
 const DEFAULT_SITE_URL = IS_PRODUCTION
-  ? "https://fushimin1892.github.io/apps/stock-margin-ratio-checker/"
+  ? "https://fushimin1892.github.io/stock-margin-ratio-checker/"
   : "http://localhost:3690/";
 
 // 認証の応答は絶対にキャッシュさせない (CDN に他人の応答を配られると困る)

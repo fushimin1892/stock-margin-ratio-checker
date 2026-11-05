@@ -40,9 +40,9 @@ API が落ちていても保存済みデータに自動でフォールバック�
 
 ### 1. GitHub Pages(画面の配信)
 
-`main` に push すると `.github/workflows/pages.yml` が自動でデプロイします。初回のみリポジトリ側で有効化が必要です。
+`main` ブランチのルートを GitHub Pages で配信しています。`main` に push すると自動で反映されます。
 
-> Settings → Pages → **Build and deployment / Source** を **GitHub Actions** に設定
+公開URL: https://fushimin1892.github.io/stock-margin-ratio-checker/
 
 この時点では「保存済みデータモード」で動きます(登録済み銘柄の閲覧はできます)。
 
@@ -90,7 +90,7 @@ API が落ちていても保存済みデータに自動でフォールバック�
 
 `.github/workflows/update-data.yml` が **毎週水・木 10:00 (JST)** に `data/` の全銘柄を再取得してコミットします。信用残は東証発表にもとづき週1回(金曜申込ぶんが翌週第2営業日ごろ)更新されるためです。
 
-公開サイトの `data/` へ反映するには、公開リポジトリに書き込める deploy key の秘密鍵を、このリポジトリの Secret `PORTAL_DEPLOY_KEY` に登録します。未登録のあいだは、このリポジトリの `data/` だけが更新されます。
+このリポジトリの `data/` がそのまま公開サイトに配信されるため、別のリポジトリへの反映は不要です。
 
 - 手動実行・銘柄の追加: Actions → **Update margin data** → *Run workflow* → 「追加/更新する銘柄コード」にスペース区切りで入力(例: `7203 6758 9984`)
 - ローカルから: `npm run update-data -- 7203 6758`
@@ -145,8 +145,8 @@ API が落ちていても保存済みデータに自動でフォールバック�
 | `scripts/build-version.js` | `version.json` の生成(コード/データの最終更新) |
 | `data/` | 銘柄ごとの週次データ蓄積先 + 一覧 `index.json` |
 | `CHANGELOG.md` | コード変更の履歴(データ更新は含めない) |
-| `reports/` | 月次更新の報告書(非公開。公開リポジトリと Vercel には含めない) |
-| `.github/workflows/` | Pages デプロイ / 週次データ更新 |
+| `reports/` | 月次更新の報告書(リポジトリが公開のため git に入れない。README のみ管理) |
+| `.github/workflows/` | 週次データ更新 |
 
 ## 今後の拡張候補(ロードマップ)
 

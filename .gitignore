@@ -9,3 +9,7 @@ node_modules/
 
 .vercel
 .env*
+
+# 月次報告はリポジトリに入れない
+reports/*
+!reports/README.md
