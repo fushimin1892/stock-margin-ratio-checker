@@ -33,7 +33,7 @@ npm start        # http://localhost:3690/ で起動
 
 | モード | 条件 | できること |
 |---|---|---|
-| **API モード** ← 現在 | localhost で `server.js` 起動中、または `config.js` に API の URL を設定済み | **任意の銘柄をその場で検索・取得**(ローカルと同じ) |
+| **API モード** ← 現在 | localhost で `server.js` 起動中、または `js/config.js` に API の URL を設定済み | **任意の銘柄をその場で検索・取得**(ローカルと同じ) |
 | **保存済みデータモード** | 上記以外、または API に接続できないとき | `data/` に保存済みの銘柄のみ表示。GitHub Actions が週次で自動更新 |
 
 API が落ちていても保存済みデータに自動でフォールバックするので、画面が真っ白になることはありません。
@@ -51,12 +51,12 @@ API が落ちていても保存済みデータに自動でフォールバック�
 `api/` 以下は Vercel の Node.js サーバーレス関数として動いています。
 
 - エンドポイント: `https://kabu-shinyo-checker.vercel.app/api/margin?code=7203` / `/api/quote?code=7203` / `/api/search?q=トヨタ`
-- この URL は `config.js` の `KABU_API_BASE` に設定済みなので、GitHub Pages の画面から任意の銘柄をその場で取得できます
+- この URL は `js/config.js` の `KABU_API_BASE` に設定済みなので、GitHub Pages の画面から任意の銘柄をその場で取得できます
 - CORS を許可しているため別オリジンから呼べます
 
 `main` に push すると Vercel が自動で再デプロイします。
 
-別の環境に置き直す場合は、[vercel.com/new](https://vercel.com/new) でこのリポジトリを Import → 設定変更なしで Deploy し、発行された**本番URL**を `config.js` に設定してください。デプロイごとに発行される `～-<ハッシュ>-<アカウント>.vercel.app` の URL は認証がかかっていて外部から使えないので、短いほうの本番URLを使います。
+別の環境に置き直す場合は、[vercel.com/new](https://vercel.com/new) でこのリポジトリを Import → 設定変更なしで Deploy し、発行された**本番URL**を `js/config.js` に設定してください。デプロイごとに発行される `～-<ハッシュ>-<アカウント>.vercel.app` の URL は認証がかかっていて外部から使えないので、短いほうの本番URLを使います。
 
 ## アカウント(新規登録・ログイン・検索履歴)
 
@@ -131,7 +131,7 @@ API が落ちていても保存済みデータに自動でフォールバック�
 | ファイル | 役割 |
 |---|---|
 | `index.html` | 画面(検索欄・カード表示・グラフ・履歴テーブル) |
-| `config.js` | API の URL 設定(空なら保存済みデータモード) |
+| `js/config.js` | API の URL 設定(空なら保存済みデータモード) |
 | `lib/kabu.js` | データ取得ロジック(ローカル / サーバーレス共通) |
 | `lib/cors.js` | API 共通のヘッダー処理・オリジン許可 |
 | `lib/store.js` | アカウント情報の保存先(KV / ローカルの `.data/`) |
