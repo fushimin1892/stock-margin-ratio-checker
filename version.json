@@ -1,8 +1,8 @@
 {
   "code": {
-    "updatedAt": "2026-11-05T15:46:39+09:00",
-    "commit": "f1c2c5a",
-    "subject": "変更履歴にファイルの整理を追記"
+    "updatedAt": "2026-11-05T14:17:04+00:00",
+    "commit": "e0138b6",
+    "subject": "月次点検: APIのエラー文をエスケープ、Actionsを v5 に更新"
   },
   "data": {
     "fetchedAt": "2026-11-05T07:42:20.907Z",
