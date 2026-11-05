@@ -14,7 +14,7 @@ const ROOT = path.join(__dirname, "..");
 const OUT = path.join(ROOT, "version.json");
 
 // データ更新の自動コミットで変わるパス。ここ以外の変更を「コードの更新」とみなす。
-const DATA_PATHS = ["data", "sitemap.xml", "version.json"];
+const DATA_PATHS = ["data", "reports", "sitemap.xml", "version.json"];
 
 function git(args) {
   try {

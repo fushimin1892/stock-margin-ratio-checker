@@ -145,6 +145,7 @@ API が落ちていても保存済みデータに自動でフォールバック�
 | `scripts/build-version.js` | `version.json` の生成(コード/データの最終更新) |
 | `data/` | 銘柄ごとの週次データ蓄積先 + 一覧 `index.json` |
 | `CHANGELOG.md` | コード変更の履歴(データ更新は含めない) |
+| `reports/` | 月次更新の報告書(非公開。公開リポジトリと Vercel には含めない) |
 | `.github/workflows/` | Pages デプロイ / 週次データ更新 |
 
 ## 今後の拡張候補(ロードマップ)
