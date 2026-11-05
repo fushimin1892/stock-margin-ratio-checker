@@ -1,8 +1,8 @@
 {
   "code": {
-    "updatedAt": "2026-11-05T13:43:08+09:00",
-    "commit": "d05c54f",
-    "subject": "公開先をリポジトリ単独の GitHub Pages に変更"
+    "updatedAt": "2026-11-05T15:45:24+09:00",
+    "commit": "9fd1752",
+    "subject": "アイコン類と設定ファイルをフォルダにまとめる"
   },
   "data": {
     "fetchedAt": "2026-11-04T03:20:18.974Z",
