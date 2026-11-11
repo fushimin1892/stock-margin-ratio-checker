@@ -4,6 +4,15 @@
 
 ローカル(`node server.js`)でも、GitHub Pages + サーバーレス API でも同じ画面が動きます。
 
+## 開発者向けの入り口
+
+- 画面と API 設定: `index.html`、`js/config.js`
+- API と共通処理: `api/`、`lib/`、`server.js`
+- 蓄積データと更新処理: `data/`、`scripts/update-data.js`、`.github/workflows/`
+- 起動・公開・環境変数: この README の各手順と [環境変数のひな形](.env.example)
+
+公開先: https://fushimin1892.github.io/stock-margin-ratio-checker/
+
 ## 更新状況の確認
 
 | 種別 | 確認先 |
