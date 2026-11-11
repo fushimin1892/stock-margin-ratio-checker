@@ -1,12 +1,12 @@
 {
   "code": {
-    "updatedAt": "2026-11-05T15:05:43Z",
-    "commit": "f88d7bf",
-    "subject": "月次点検: グラフ見出しの「最新」を週の日付に変更"
+    "updatedAt": "2026-11-06T11:59:57+09:00",
+    "commit": "31def01",
+    "subject": "共有プレビューの画像を横長バナーから正方形のアイコンに変更する"
   },
   "data": {
-    "fetchedAt": "2026-11-05T07:42:20.907Z",
-    "latestMarginWeek": "2026/10/30",
+    "fetchedAt": "2026-11-11T07:30:37.552Z",
+    "latestMarginWeek": "2026/11/6",
     "stockCount": 21
   }
 }
