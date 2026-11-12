@@ -1,11 +1,11 @@
 {
   "code": {
-    "updatedAt": "2026-11-06T11:59:57+09:00",
-    "commit": "31def01",
-    "subject": "共有プレビューの画像を横長バナーから正方形のアイコンに変更する"
+    "updatedAt": "2026-11-11T22:36:13+09:00",
+    "commit": "e5fc0d6",
+    "subject": "docs: improve repository navigation"
   },
   "data": {
-    "fetchedAt": "2026-11-11T07:30:37.552Z",
+    "fetchedAt": "2026-11-12T07:58:48.782Z",
     "latestMarginWeek": "2026/11/6",
     "stockCount": 21
   }
